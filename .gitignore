@@ -1,0 +1,7 @@
+starsim/models/Phoenix/*.fits
+starsim/models/Phoenix_mu/*.fits
+starsim/plots/*
+starsim/__pycache__/*
+starsim/results/*
+starsim/data/*
+carles.py
