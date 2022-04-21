@@ -21,7 +21,7 @@ setuptools.setup(
     python_requires='>=3.6',                # Minimum version requirement of the package
     install_requires=[
             'tqdm>=4.59.0',
-            'numpy>=1.21.2',
+            'numpy',
             'emcee>=3.1.0',
             'corner>=2.2.1',
             'configparser>=5.0.2',

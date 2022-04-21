@@ -33,13 +33,11 @@ def lnposteriorMCMC(self,P,pbound,logprior,typ):
     """
 
     lp = lnpriorMCMC(P,pbound,logprior) #get the prior
-
     # if the prior is not finite return a probability of zero (log probability of -inf), to avoid computing the likelihood and save time
     if not np.isfinite(lp):
         return -np.inf
 
     p_used, best_map, lnL=lnlikeMCMC(self,P,typ)
-
     # return the likeihood times the prior (log likelihood plus the log prior)
     return p_used, best_map, lp + lnL
 
@@ -90,7 +88,6 @@ def lnlikeMCMC(self,P,typ):
         typ (array): indicates if its lc, rv or crx.
 
     """
-
     #Variable p contains all the parameters available, fixed and optimized. P are the optimized parameters,vparam are the fixed params.
     p=np.zeros(len(self.vparam))
     # print(P)
@@ -126,7 +123,6 @@ def lnlikeMCMC(self,P,typ):
 
 
     gbest,gbest_lnL=inversion_SA(self,typ,only_inversion=False)
-  
     return p, gbest, gbest_lnL
 
 
@@ -137,12 +133,10 @@ def lnlikeMCMC(self,P,typ):
 
 
 def lnposteriorSA(self,P,pbound,logprior,typ,mode_lc_params,mode_rv_params):
-
     lp = lnpriorSA(self,P,pbound,logprior) #get the prior. Check if spots are overlapping
     # if the prior is not finite return a probability of zero (log probability of -inf), to avoid computing the likelihood and save time
     if not np.isfinite(lp):
         return -np.inf
-
     lnL=lnlikeSA(self,typ,mode_lc_params,mode_rv_params)
     # np.set_printoptions(precision=3,suppress=True)
     # print(P,lp,lnL,lp+lnL)
@@ -197,36 +191,26 @@ def lnlikeSA(self,typ,mode_lc_params,mode_rv_params):
     l=0
     r=0
     for i in range(len(self.instruments)): #for each instrument
+
         for j in np.unique(typ[i]): #for each observable of the instrument
+
             if j==0: #photometric case
                 t=self.data[self.instruments[i]]['lc']['t']
                 _,FLUX,_,_,_,_=nbspectra.generate_rotating_photosphere_fast_lc(t,mode_lc_params[l][0],mode_lc_params[l][1],mode_lc_params[l][2],mode_lc_params[l][3],mode_lc_params[l][4],mode_lc_params[l][5],mode_lc_params[l][6],5,self.use_phoenix_limb_darkening,self.limb_darkening_law,self.limb_darkening_q1,self.limb_darkening_q2,self.spot_map,self.reference_time,self.rotation_period,self.differential_rotation,self.spots_evo_law,self.facular_area_ratio,self.inclination,self.temperature_photosphere,self.temperature_facula,self.simulate_planet,self.planet_esinw,self.planet_ecosw,self.planet_transit_t0,self.planet_period,self.planet_radius,self.planet_impact_param,self.planet_semi_major_axis,self.planet_spin_orbit_angle)
+                data=self.data[self.instruments[i]]['lc']['y']
+                error=self.data[self.instruments[i]]['lc']['yerr']
 
                 if (self.data[self.instruments[i]]['lc']['fix_jitter'] and self.data[self.instruments[i]]['lc']['fix_offset']):
-                    offset=1.0 #offsets and jitters already set
-                    jitter=0.0
-                    data=self.data[self.instruments[i]]['lc']['y']
-                    error=self.data[self.instruments[i]]['lc']['yerr']
-                    newerror=np.sqrt((error/offset)**2+jitter**2)
-                    lnL=lnL-0.5*np.sum(((data/offset-FLUX)/(newerror))**2.0+np.log(2.0*np.pi)+np.log(newerror**2))
-
+                    lnL=lnL-0.5*np.sum(((data-FLUX)/(error))**2.0+np.log(2.0*np.pi)+np.log(error**2))
                 elif self.data[self.instruments[i]]['lc']['fix_offset']:
-                    offset=1.0
-                    data=self.data[self.instruments[i]]['lc']['y']/offset
-                    error=self.data[self.instruments[i]]['lc']['yerr']/offset
                     res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(error), args=(FLUX,data,error), method='Nelder-Mead')
-                    lnL=lnL-res.fun
-                
+                    lnL=lnL-res.fun                
                 elif self.data[self.instruments[i]]['lc']['fix_jitter']:
-                    jitter=0.0
-                    newerror=np.sqrt(self.data[self.instruments[i]]['lc']['yerr']**2+jitter**2)
-                    res=optimize.minimize(nbspectra.fit_only_multiplicative_offset,np.mean(self.data[self.instruments[i]]['lc']['y'])/(np.mean(FLUX)+0.0001), args=(FLUX,self.data[self.instruments[i]]['lc']['y'],newerror), method='Nelder-Mead')
+                    res=optimize.minimize(nbspectra.fit_only_multiplicative_offset,np.mean(data)/(np.mean(FLUX)+0.0001), args=(FLUX,data,error), method='Nelder-Mead')
                     lnL=lnL-res.fun
-                
                 else:
-                    res=optimize.minimize(nbspectra.fit_multiplicative_offset_jitter,[np.mean(self.data[self.instruments[i]]['lc']['y'])/(np.mean(FLUX)+0.0001),2*np.mean(self.data[self.instruments[i]]['lc']['yerr'])], args=(FLUX,self.data[self.instruments[i]]['lc']['y'],self.data[self.instruments[i]]['lc']['yerr']), method='Nelder-Mead')
+                    res=optimize.minimize(nbspectra.fit_multiplicative_offset_jitter,[np.mean(data)/(np.mean(FLUX)+0.0001),2*np.mean(error)], args=(FLUX,data,error), method='Nelder-Mead')
                     lnL=lnL-res.fun
-
                 l+=1
 
             if j==1: #spectroscopic case
@@ -241,61 +225,85 @@ def lnlikeSA(self,typ,mode_lc_params,mode_rv_params):
 
                 ccf_params=spectra.compute_ccf_params(self,mode_rv_params[r][4],CCF,plot_test=False)
                 self.results['rv']=ccf_params[0] + rvkepler - mode_rv_params[r][-4] #subtract rv of immaculate photosphere
-                self.results['contrast']=ccf_params[1] #- mode_rv_params[r][-3] #offsets
+                self.results['contrast']=ccf_params[1]/mode_rv_params[r][-3] #offsets
                 self.results['fwhm']=ccf_params[2] #- mode_rv_params[r][-2]
                 self.results['bis']=ccf_params[3] #- mode_rv_params[r][-1] 
+                
                 for k in idx_rv:
-
-                    if (self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter'] and self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']):
-                        offset=0.0
-                        jitter=0.0
-                        newerror=np.sqrt(self.data[self.instruments[i]][self.observables[i][k]]['yerr']**2+jitter**2)
-                        lnL=lnL-0.5*np.sum(((self.data[self.instruments[i]][self.observables[i][k]]['y']-offset-self.results[self.observables[i][k]])/(newerror))**2.0+np.log(2.0*np.pi)+np.log(newerror**2))
-
-                    elif self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']:
-                        offset=0.0
-                        res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][self.observables[i][k]]['yerr']), args=(self.results[self.observables[i][k]],self.data[self.instruments[i]][self.observables[i][k]]['y']-offset,self.data[self.instruments[i]][self.observables[i][k]]['yerr']), method='Nelder-Mead')
-                        lnL=lnL-res.fun
+                    data=self.data[self.instruments[i]][self.observables[i][k]]['y']
+                    error=self.data[self.instruments[i]][self.observables[i][k]]['yerr']
+                    model=self.results[self.observables[i][k]]
                     
-                    elif self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter']:
-                        jitter=0.0
-                        newerror=np.sqrt(self.data[self.instruments[i]][self.observables[i][k]]['yerr']**2+jitter**2)
-                        res=optimize.minimize(nbspectra.fit_only_linear_offset,np.mean(self.data[self.instruments[i]][self.observables[i][k]]['y'])-(np.mean(self.results[self.observables[i][k]])), args=(self.results[self.observables[i][k]],self.data[self.instruments[i]][self.observables[i][k]]['y'],newerror), method='Nelder-Mead')
-                        lnL=lnL-res.fun
+                    if self.data[self.instruments[i]][self.observables[i][k]]['offset_type'] =='multiplicative': #multiplicative offset
+                        
+                        if (self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter'] and self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']):
+                            lnL=lnL-0.5*np.sum(((data-model)/(error))**2.0+np.log(2.0*np.pi)+np.log(error**2))
+                        elif self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']:
+                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(error), args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun                        
+                        elif self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter']:
+                            res=optimize.minimize(nbspectra.fit_only_multiplicative_offset,np.mean(data)/(np.mean(model)+0.0001), args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun
+                        else:
+                            res=optimize.minimize(nbspectra.fit_multiplicative_offset_jitter,[np.mean(data)/(np.mean(model)+0.0001),2*np.mean(error)], args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun
 
-                    else:
-                        res=optimize.minimize(nbspectra.fit_linear_offset_jitter,[np.mean(self.data[self.instruments[i]][self.observables[i][k]]['y'])-(np.mean(self.results[self.observables[i][k]])),2*np.mean(self.data[self.instruments[i]][self.observables[i][k]]['yerr'])], args=(self.results[self.observables[i][k]],self.data[self.instruments[i]][self.observables[i][k]]['y'],self.data[self.instruments[i]][self.observables[i][k]]['yerr']), method='Nelder-Mead')
-                        lnL=lnL-res.fun
+                    else: #linear offset
+                        
+                        if (self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter'] and self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']):
+                            lnL=lnL-0.5*np.sum(((data-model)/(error))**2.0+np.log(2.0*np.pi)+np.log(error**2))
+                        elif self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']:
+                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(error), args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun                        
+                        elif self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter']:
+                            res=optimize.minimize(nbspectra.fit_only_linear_offset,np.mean(data)-np.mean(model), args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun
+                        else:
+                            res=optimize.minimize(nbspectra.fit_linear_offset_jitter,[np.mean(data)-np.mean(model),2*np.mean(error)], args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun
 
-                    r+=1
+                        r+=1
+
 
             if j==2: #chromatic-spectroscopic case
                 idx_crx=np.where(np.array(typ[i])==2)[0] #indexs of observables that are crx. Ideally only one
                 self.wavelength_lower_limit=self.data[self.instruments[i]]['wvmin']
                 self.wavelength_upper_limit=self.data[self.instruments[i]]['wvmax']
                 self.compute_forward(observables=['crx'],t=self.data[self.instruments[i]][self.observables[i][idx_crx[0]]]['t'],inversion=True)
-                for k in idx_crx:
-                    
-                    if (self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter'] and self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']):
-                        offset=0.0
-                        jitter=0.0
-                        newerror=np.sqrt(self.data[self.instruments[i]][self.observables[i][k]]['yerr']**2+jitter**2)
-                        lnL=lnL-0.5*np.sum(((self.data[self.instruments[i]][self.observables[i][k]]['y']-offset-self.results[self.observables[i][k]])/(newerror))**2.0+np.log(2.0*np.pi)+np.log(newerror**2))
 
-                    elif self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']:
-                        offset=0.0
-                        res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][self.observables[i][k]]['yerr']), args=(self.results[self.observables[i][k]],self.data[self.instruments[i]][self.observables[i][k]]['y']-offset,self.data[self.instruments[i]][self.observables[i][k]]['yerr']), method='Nelder-Mead')
-                        lnL=lnL-res.fun
+                for k in idx_crx:
+                    data=self.data[self.instruments[i]][self.observables[i][k]]['y']
+                    error=self.data[self.instruments[i]][self.observables[i][k]]['yerr']
+                    model=self.results[self.observables[i][k]]
                     
-                    elif self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter']:
-                        jitter=0.0
-                        newerror=np.sqrt(self.data[self.instruments[i]][self.observables[i][k]]['yerr']**2+jitter**2)
-                        res=optimize.minimize(nbspectra.fit_only_linear_offset,np.mean(self.data[self.instruments[i]][self.observables[i][k]]['y'])-(np.mean(self.results[self.observables[i][k]])), args=(self.results[self.observables[i][k]],self.data[self.instruments[i]][self.observables[i][k]]['y'],newerror), method='Nelder-Mead')
-                        lnL=lnL-res.fun
-                    
-                    else:
-                        res=optimize.minimize(nbspectra.fit_linear_offset_jitter,[np.mean(self.data[self.instruments[i]][self.observables[i][k]]['y'])-(np.mean(self.results[self.observables[i][k]])),2*np.mean(self.data[self.instruments[i]][self.observables[i][k]]['yerr'])], args=(self.results[self.observables[i][k]],self.data[self.instruments[i]][self.observables[i][k]]['y'],self.data[self.instruments[i]][self.observables[i][k]]['yerr']), method='Nelder-Mead')
-                        lnL=lnL-res.fun
+                    if self.data[self.instruments[i]][self.observables[i][k]]['offset_type'] =='multiplicative': #multiplicative offset
+                        
+                        if (self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter'] and self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']):
+                            lnL=lnL-0.5*np.sum(((data-model)/(error))**2.0+np.log(2.0*np.pi)+np.log(error**2))
+                        elif self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']:
+                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(error), args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun                        
+                        elif self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter']:
+                            res=optimize.minimize(nbspectra.fit_only_multiplicative_offset,np.mean(data)/(np.mean(model)+0.0001), args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun
+                        else:
+                            res=optimize.minimize(nbspectra.fit_multiplicative_offset_jitter,[np.mean(data)/(np.mean(model)+0.0001),2*np.mean(error)], args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun
+
+                    else: #linear offset
+                        
+                        if (self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter'] and self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']):
+                            lnL=lnL-0.5*np.sum(((data-model)/(error))**2.0+np.log(2.0*np.pi)+np.log(error**2))
+                        elif self.data[self.instruments[i]][self.observables[i][k]]['fix_offset']:
+                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(error), args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun                        
+                        elif self.data[self.instruments[i]][self.observables[i][k]]['fix_jitter']:
+                            res=optimize.minimize(nbspectra.fit_only_linear_offset,np.mean(data)-np.mean(model), args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun
+                        else:
+                            res=optimize.minimize(nbspectra.fit_linear_offset_jitter,[np.mean(data)-np.mean(model),2*np.mean(error)], args=(model,data,error), method='Nelder-Mead')
+                            lnL=lnL-res.fun
+
 
     return lnL
 
@@ -456,7 +464,7 @@ def inversion_SA(self,typ,only_inversion=False):
     ################ AS OPTIONS ##########################
     ndim = len(ASvparamfit)
     T0=self.N_data/3 #Initial temperature is N points/3. Is equivalent to the DeltalnL equivalent to a 1sigma deviation
-    Tf=1e-100 #Final temperature.
+    Tf=1e-20 #Final temperature.
     Niters=self.N_iters_SA
     alpha=(Tf/T0)**(1/Niters)
     ######################################################

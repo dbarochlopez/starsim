@@ -20,7 +20,6 @@ from scipy.interpolate import interp1d
 from scipy import optimize
 from . import spectra
 from . import nbspectra
-from . import PSO
 from . import SA
 from numba import jit
 
@@ -116,7 +115,7 @@ class StarSim(object):
             self.nwalkers = int(self.conf_file.get('optimization','N_walkers'))
             self.steps = int(self.conf_file.get('optimization','N_steps'))
             self.planet_impact_paramurns = int(self.conf_file.get('optimization','N_burns'))
-            self.ncpus = int(self.conf_file.get('optimization','N_cpus'))
+            self.N_cpus = int(self.conf_file.get('optimization','N_cpus'))
             self.N_iters_SA = int(self.conf_file.get('optimization','N_iters_SA'))
 
 
@@ -361,7 +360,7 @@ class StarSim(object):
             ccf_params=spectra.compute_ccf_params(self,rv,CCF,plot_test=False)
             self.results['time']=self.obs_times
             self.results['rv']=ccf_params[0] - RV0 + rvkepler #subtract rv of immaculate photosphere
-            self.results['contrast']=ccf_params[1]
+            self.results['contrast']=ccf_params[1]/C0
             self.results['fwhm']=ccf_params[2]
             self.results['bis']=ccf_params[3]
             self.results['ff_ph']=ff_ph
@@ -732,7 +731,7 @@ class StarSim(object):
         nwalkers=self.nwalkers
 
 
-        with Pool(self.ncpus) as pool:
+        with Pool(self.N_cpus) as pool:
         #EMCEE
 
             p1=np.zeros([preburns,nwalkers,ndim])
@@ -845,263 +844,6 @@ class StarSim(object):
 
 
 
-    # #Optimize the stellar parameters. For each configuration of the MCMC, the spot map is optimized using PSO.
-    # def optimize_PSOMCMC(self):
-    #     os.environ["OMP_NUM_THREADS"] = "1"
-
-    #     N_spots = len(self.spot_map) #number of spots in spot_map
-    #     self.n_grid_rings = 5 
-    #     self.simulation_mode = 'fast' #must work in fast mode
-
-    #     print('\nUsing data from the instruments:')
-    #     self.instruments=[]
-    #     self.observables=[]
-    #     typ=[]
-
-    #     N_obs=0
-    #     for ins in self.data.keys():
-    #         print('-',ins,', with the observables:')
-    #         self.instruments.append(ins)
-    #         o=[]
-    #         ty=[]
-    #         for obs in self.data[ins].keys():
-    #             if obs in ['lc']:
-    #                 print('\t-',obs)
-    #                 o.append(obs)
-    #                 ty.append(0)
-    #             elif obs in ['rv','fwhm','bis','contrast']:
-    #                 print('\t-',obs)
-    #                 o.append(obs)
-    #                 ty.append(1)
-    #             if obs in ['crx']:
-    #                 print('\t-',obs)
-    #                 o.append(obs)
-    #                 ty.append(2)
-    #         N_obs+=len(o)
-    #         self.observables.append(o)
-    #         typ.append(ty)
-
-
-
-    #     fixed_T = self.temperature_photosphere
-    #     fixed_sp_T = self.temperature_photosphere-self.temperature_spot
-    #     fixed_fc_T = self.temperature_facula-self.temperature_photosphere
-    #     fixed_Q = self.facular_area_ratio
-    #     fixed_CB = self.convective_shift
-    #     fixed_Prot = self.rotation_period
-    #     fixed_inc = np.rad2deg(np.pi/2-self.inclination) 
-    #     fixed_R = self.radius
-    #     fixed_LD1 = self.limb_darkening_q1
-    #     fixed_LD2 = self.limb_darkening_q2
-    #     fixed_Pp = self.planet_period
-    #     fixed_T0p = self.planet_transit_t0
-    #     fixed_Kp = self.planet_semi_amplitude
-    #     fixed_esinwp = self.planet_esinw
-    #     fixed_ecoswp = self.planet_ecosw
-    #     fixed_Rp =  self.planet_radius
-    #     fixed_bp = self.planet_impact_param
-    #     fixed_alp =  self.planet_spin_orbit_angle    #spin-orbit angle
-
-    #     self.vparam=np.array([fixed_T,fixed_sp_T,fixed_fc_T,fixed_Q,fixed_CB,fixed_Prot,fixed_inc,fixed_R,fixed_LD1,fixed_LD2,fixed_Pp,fixed_T0p,fixed_Kp,fixed_esinwp,fixed_ecoswp,fixed_Rp,fixed_bp,fixed_alp])
-
-    #     name_T ='T$_{{eff}}$'
-    #     name_sp_T ='$\\Delta$ T$_{{sp}}$'
-    #     name_fc_T ='$\\Delta$ T$_{{fc}}$'
-    #     name_Q ='Fac-spot ratio'
-    #     name_CB ='CB'
-    #     name_Prot ='P$_{{rot}}$'
-    #     name_inc ='inc'
-    #     name_R ='R$_*$'
-    #     name_LD1 = 'q$_1$'
-    #     name_LD2 = 'q$_2$'
-    #     name_Pp = 'P$_{{pl}}$'
-    #     name_T0p = 'T$_{{0,pl}}$'
-    #     name_Kp = 'K$_{{pl}}$'
-    #     name_esinwp = 'esinw'
-    #     name_ecoswp = 'ecosw'
-    #     name_Rp =  'R$_{{pl}}$'
-    #     name_bp = 'b'
-    #     name_alp = '$\\lambda$'  
-
-    #     self.lparam=np.array([name_T,name_sp_T,name_fc_T,name_Q,name_CB,name_Prot,name_inc,name_R,name_LD1,name_LD2,name_Pp,name_T0p,name_Kp,name_esinwp,name_ecoswp,name_Rp,name_bp,name_alp])
-
-    #     f_T = self.prior_t_eff_ph[0]
-    #     f_sp_T = self.prior_spot_T_contrast[0] 
-    #     f_fc_T = self.prior_facula_T_contrast[0] 
-    #     f_Q = self.prior_q_ratio[0]   
-    #     f_CB = self.prior_convective_blueshift[0]   
-    #     f_Prot = self.prior_p_rot[0] 
-    #     f_inc = self.prior_inclination[0]   
-    #     f_R = self.prior_Rstar[0]
-    #     f_LD1 = self.prior_LD1[0]
-    #     f_LD2 = self.prior_LD2[0]
-    #     f_Pp = self.prior_Pp[0]
-    #     f_T0p = self.prior_T0p[0]
-    #     f_Kp = self.prior_Kp[0]
-    #     f_esinwp = self.prior_esinwp[0]
-    #     f_ecoswp = self.prior_ecoswp[0]
-    #     f_Rp = self.prior_Rp[0]
-    #     f_bp = self.prior_bp[0]
-    #     f_alp = self.prior_alp[0]     
-
-    #     self.fit=np.array([f_T,f_sp_T,f_fc_T,f_Q,f_CB,f_Prot,f_inc,f_R,f_LD1,f_LD2,f_Pp,f_T0p,f_Kp,f_esinwp,f_ecoswp,f_Rp,f_bp,f_alp])       
-
-    #     bound_T = np.array([self.prior_t_eff_ph[1],self.prior_t_eff_ph[2]])
-    #     bound_sp_T = np.array([self.prior_spot_T_contrast[1],self.prior_spot_T_contrast[2]]) 
-    #     bound_fc_T = np.array([self.prior_facula_T_contrast[1],self.prior_facula_T_contrast[2]]) 
-    #     bound_Q = np.array([self.prior_q_ratio[1],self.prior_q_ratio[2]])   
-    #     bound_CB = np.array([self.prior_convective_blueshift[1],self.prior_convective_blueshift[2]])   
-    #     bound_Prot = np.array([self.prior_p_rot[1],self.prior_p_rot[2]]) 
-    #     bound_inc = np.array([self.prior_inclination[1],self.prior_inclination[2]])   
-    #     bound_R = np.array([self.prior_Rstar[1],self.prior_Rstar[2]])
-    #     bound_LD1 = np.array([self.prior_LD1[1],self.prior_LD1[2]])
-    #     bound_LD2 = np.array([self.prior_LD2[1],self.prior_LD2[2]])
-    #     bound_Pp = np.array([self.prior_Pp[1],self.prior_Pp[2]])
-    #     bound_T0p = np.array([self.prior_T0p[1],self.prior_T0p[2]])
-    #     bound_Kp = np.array([self.prior_Kp[1],self.prior_Kp[2]])
-    #     bound_esinwp = np.array([self.prior_esinwp[1],self.prior_esinwp[2]])
-    #     bound_ecoswp = np.array([self.prior_ecoswp[1],self.prior_ecoswp[2]])
-    #     bound_Rp = np.array([self.prior_Rp[1],self.prior_Rp[2]])
-    #     bound_bp = np.array([self.prior_bp[1],self.prior_bp[2]])
-    #     bound_alp = np.array([self.prior_alp[1],self.prior_alp[2]])
-
-    #     bounds=np.array([bound_T,bound_sp_T,bound_fc_T,bound_Q,bound_CB,bound_Prot,bound_inc,bound_R,bound_LD1,bound_LD2,bound_Pp,bound_T0p,bound_Kp,bound_esinwp,bound_ecoswp,bound_Rp,bound_bp,bound_alp]) 
-
-    #     prior_T = spectra.generate_prior(self.prior_t_eff_ph[3],self.prior_t_eff_ph[4],self.prior_t_eff_ph[5],self.steps)
-    #     prior_sp_T = spectra.generate_prior(self.prior_spot_T_contrast[3],self.prior_spot_T_contrast[4],self.prior_spot_T_contrast[5],self.steps) 
-    #     prior_fc_T = spectra.generate_prior(self.prior_facula_T_contrast[3],self.prior_facula_T_contrast[4],self.prior_facula_T_contrast[5],self.steps) 
-    #     prior_Q = spectra.generate_prior(self.prior_q_ratio[3],self.prior_q_ratio[4],self.prior_q_ratio[5],self.steps)   
-    #     prior_CB = spectra.generate_prior(self.prior_convective_blueshift[3],self.prior_convective_blueshift[4],self.prior_convective_blueshift[5],self.steps)   
-    #     prior_Prot = spectra.generate_prior(self.prior_p_rot[3],self.prior_p_rot[4],self.prior_p_rot[5],self.steps) 
-    #     prior_inc = spectra.generate_prior(self.prior_inclination[3],self.prior_inclination[4],self.prior_inclination[5],self.steps)   
-    #     prior_R = spectra.generate_prior(self.prior_Rstar[3],self.prior_Rstar[4],self.prior_Rstar[5],self.steps)
-    #     prior_LD1 = spectra.generate_prior(self.prior_LD1[3],self.prior_LD1[4],self.prior_LD1[5],self.steps)
-    #     prior_LD2 = spectra.generate_prior(self.prior_LD2[3],self.prior_LD2[4],self.prior_LD2[5],self.steps)
-    #     prior_Pp = spectra.generate_prior(self.prior_Pp[3],self.prior_Pp[4],self.prior_Pp[5],self.steps)
-    #     prior_T0p = spectra.generate_prior(self.prior_T0p[3],self.prior_T0p[4],self.prior_T0p[5],self.steps)
-    #     prior_Kp = spectra.generate_prior(self.prior_Kp[3],self.prior_Kp[4],self.prior_Kp[5],self.steps)
-    #     prior_esinwp = spectra.generate_prior(self.prior_esinwp[3],self.prior_esinwp[4],self.prior_esinwp[5],self.steps)
-    #     prior_ecoswp = spectra.generate_prior(self.prior_ecoswp[3],self.prior_ecoswp[4],self.prior_ecoswp[5],self.steps)
-    #     prior_Rp = spectra.generate_prior(self.prior_Rp[3],self.prior_Rp[4],self.prior_Rp[5],self.steps)
-    #     prior_bp = spectra.generate_prior(self.prior_bp[3],self.prior_bp[4],self.prior_bp[5],self.steps)
-    #     prior_alp = spectra.generate_prior(self.prior_alp[3],self.prior_alp[4],self.prior_alp[5],self.steps)
-
-    #     priors=np.array([prior_T,prior_sp_T,prior_fc_T,prior_Q,prior_CB,prior_Prot,prior_inc,prior_R,prior_LD1,prior_LD2,prior_Pp,prior_T0p,prior_Kp,prior_esinwp,prior_ecoswp,prior_Rp,prior_bp,prior_alp]) 
-
-
-    #     logprior_T=np.array([self.prior_t_eff_ph[3],self.prior_t_eff_ph[4],self.prior_t_eff_ph[5]])
-    #     logprior_sp_T=np.array([self.prior_spot_T_contrast[3],self.prior_spot_T_contrast[4],self.prior_spot_T_contrast[5]]) 
-    #     logprior_fc_T=np.array([self.prior_facula_T_contrast[3],self.prior_facula_T_contrast[4],self.prior_facula_T_contrast[5]]) 
-    #     logprior_Q=np.array([self.prior_q_ratio[3],self.prior_q_ratio[4],self.prior_q_ratio[5]])   
-    #     logprior_CB=np.array([self.prior_convective_blueshift[3],self.prior_convective_blueshift[4],self.prior_convective_blueshift[5]])   
-    #     logprior_Prot=np.array([self.prior_p_rot[3],self.prior_p_rot[4],self.prior_p_rot[5]]) 
-    #     logprior_inc=np.array([self.prior_inclination[3],self.prior_inclination[4],self.prior_inclination[5]])   
-    #     logprior_R=np.array([self.prior_Rstar[3],self.prior_Rstar[4],self.prior_Rstar[5]])
-    #     logprior_LD1=np.array([self.prior_LD1[3],self.prior_LD1[4],self.prior_LD1[5]])
-    #     logprior_LD2=np.array([self.prior_LD2[3],self.prior_LD2[4],self.prior_LD2[5]])
-    #     logprior_Pp = np.array([self.prior_Pp[3],self.prior_Pp[4],self.prior_Pp[5]])
-    #     logprior_T0p = np.array([self.prior_T0p[3],self.prior_T0p[4],self.prior_T0p[5]])
-    #     logprior_Kp = np.array([self.prior_Kp[3],self.prior_Kp[4],self.prior_Kp[5]])
-    #     logprior_esinwp = np.array([self.prior_esinwp[3],self.prior_esinwp[4],self.prior_esinwp[5]])
-    #     logprior_ecoswp = np.array([self.prior_ecoswp[3],self.prior_ecoswp[4],self.prior_ecoswp[5]])
-    #     logprior_Rp = np.array([self.prior_Rp[3],self.prior_Rp[4],self.prior_Rp[5]])
-    #     logprior_bp = np.array([self.prior_bp[3],self.prior_bp[4],self.prior_bp[5]])
-    #     logprior_alp = np.array([self.prior_alp[3],self.prior_alp[4],self.prior_alp[5]])
-
-    #     logpriors=np.array([logprior_T,logprior_sp_T,logprior_fc_T,logprior_Q,logprior_CB,logprior_Prot,logprior_inc,logprior_R,logprior_LD1,logprior_LD2,logprior_Pp,logprior_T0p,logprior_Kp,logprior_esinwp,logprior_ecoswp,logprior_Rp,logprior_bp,logprior_alp]) 
-
-
-    #     vparamfit=np.array([])
-    #     self.lparamfit=np.array([])
-    #     boundfit=[]
-    #     priors_fit=[]
-    #     logpriors_fit=[]
-
-    #     for i in range(len(self.fit)):
-    #       if self.fit[i]==1:
-    #         vparamfit=np.append(vparamfit,self.vparam[i])
-    #         self.lparamfit=np.append(self.lparamfit,self.lparam[i])
-    #         priors_fit.append(priors[i])
-    #         logpriors_fit.append(logpriors[i])
-    #         boundfit.append(bounds[i])
-    #     boundfit=np.asarray(boundfit)
-    #     priors_fit=np.asarray(priors_fit)
-    #     logpriors_fit=np.asarray(logpriors_fit)
-
-        
-    #     ndim = len(self.lparamfit)
-    #     p0=priors_fit.T
-        
-    #     print('Searching random grid for best stellar parameters. Optimizing spotmap at each step.')
-    #     print('Total parameters to optimize:',ndim)
-
-    #     steps=self.steps
-
-    #     with Pool(processes=self.ncpus) as pool:
-    #         res=pool.starmap(PSO.inversion_parallel_MCMC,tqdm.tqdm([(self,p0,boundfit,logpriors_fit,typ,i) for i in range(steps)], total=steps),chunksize=1)
-
-
-    #     p_used = np.asarray(res,dtype='object')[:,0]
-    #     best_maps = np.asarray(res,dtype='object')[:,1]
-    #     lnLs = np.asarray(res,dtype='object')[:,2]
-
-    #     ofilename = Path(__file__).parent / 'results/inversion_MCMCPSO_stats.npy'
-    #     np.save(ofilename,np.array([lnLs,p_used,best_maps],dtype='object'),allow_pickle=True)
-
-
-    # # #Optimize the stellar parameters. For each configuration of the MCMC, the spot map is optimized using PSO.
-    # def compute_inversePSO(self,N_inversions):
-    #     N_spots = len(self.spot_map) #number of spots in spot_map
-    #     self.n_grid_rings = 5 
-    #     self.simulation_mode = 'fast' #must work in fast mode
-    #     self.nparticles=50
-
-    #     print('Computing',N_inversions,'inversions of',N_spots,'spots each.')
-    #     print('\nUsing data from the instruments:')
-    #     self.instruments=[]
-    #     self.observables=[]
-    #     typ=[]
-
-    #     N_obs=0
-    #     for ins in self.data.keys():
-    #         print('-',ins,', with the observables:')
-    #         self.instruments.append(ins)
-    #         o=[]
-    #         ty=[]
-    #         for obs in self.data[ins].keys():
-    #             if obs in ['lc']:
-    #                 print('\t-',obs)
-    #                 o.append(obs)
-    #                 ty.append(0)
-    #             elif obs in ['rv','fwhm','bis','contrast']:
-    #                 print('\t-',obs)
-    #                 o.append(obs)
-    #                 ty.append(1)
-    #             if obs in ['crx']:
-    #                 print('\t-',obs)
-    #                 o.append(obs)
-    #                 ty.append(2)
-    #         N_obs+=len(o)
-    #         self.observables.append(o)
-    #         typ.append(ty)
-
-
-    #     with Pool(processes=self.ncpus) as pool:
-    #         res=pool.starmap(PSO.inversion_parallel,tqdm.tqdm([(self,typ,i) for i in range(N_inversions)],total=N_inversions),chunksize=1)
-
-    #     best_maps = np.asarray(res,dtype='object')[:,0]
-    #     lnLs = np.asarray(res,dtype='object')[:,1]
-
-
-    #     numbers = np.zeros([len(lnLs),1+len(best_maps[0].flatten())])
-    #     for i,j in enumerate(np.argsort(lnLs)[::-1]):
-    #         numbers[i]=np.hstack([lnLs[j],best_maps[j].flatten()])
-
-    #     ofilename = Path(__file__).parent / 'results/inversion_stats.dat'
-    #     np.savetxt(ofilename,numbers,fmt='%.7f')
-
-    #     return best_maps, lnLs
-
         
     #Optimize the stellar map. The spot map is optimized using Simulated annealing.
     def compute_inverseSA(self,N_inversions):
@@ -1144,7 +886,7 @@ class StarSim(object):
             typ.append(ty)
 
 
-        with Pool(processes=self.ncpus) as pool:
+        with Pool(processes=self.N_cpus) as pool:
             res=pool.starmap(SA.inversion_parallel,tqdm.tqdm([(self,typ,i) for i in range(N_inversions)],total=N_inversions),chunksize=1)
 
         best_maps = np.asarray(res,dtype='object')[:,0]
@@ -1354,7 +1096,7 @@ class StarSim(object):
 
         steps=self.steps
 
-        with Pool(processes=self.ncpus) as pool:
+        with Pool(processes=self.N_cpus) as pool:
             res=pool.starmap(SA.inversion_parallel_MCMC,tqdm.tqdm([(self,p0,boundfit,logpriors_fit,typ,i) for i in range(steps)], total=steps),chunksize=1)
 
 
@@ -1405,18 +1147,20 @@ class StarSim(object):
             if t is None:
                 sys.exit('Please provide a valid filename with the input data')
 
-        if observable=='lc':
+        if observable in ['lc','fwhm','contrast']:
             if offset == 0.0:
-                sys.exit("Error in the input offset of the observed lc. It is a multiplicative offset, can't be 0")
+                sys.exit("Error in the input offset of the observable:",observable,". It is a multiplicative offset, can't be 0")
             if offset is None:
                 offset=1.0
-            self.data[instrument][observable]['yerr']=np.sqrt((self.data[instrument][observable]['yerr']/offset)**2+jitter**2)
+            self.data[instrument][observable]['yerr']=np.sqrt(self.data[instrument][observable]['yerr']**2+jitter**2)/offset
             self.data[instrument][observable]['y']=self.data[instrument][observable]['y']/offset
+            self.data[instrument][observable]['offset_type']='multiplicative'
         else:
             if offset is None:
                 offset=0.0
             self.data[instrument][observable]['y']=self.data[instrument][observable]['y'] - offset
             self.data[instrument][observable]['yerr']=np.sqrt(self.data[instrument][observable]['yerr']**2+jitter**2)
+            self.data[instrument][observable]['offset_type']='linear'
 
 
 
@@ -1426,10 +1170,12 @@ class StarSim(object):
     def plot_forward_results(self):
         '''method for plotting the results from forward method
         '''
-        fig, ax = plt.subplots(len(self.results.keys())-1,figsize=(6,8),sharex=True)
+        fig, ax = plt.subplots(len(self.results.keys())-2,figsize=(6,8),sharex=True)
         k=0
         for i, name in enumerate(self.results.keys()):
             if name=='time':
+                k-=1
+            elif name=='CCF':
                 k-=1
             else:
                 ax[k].plot(self.results['time'],self.results[name],'.')
@@ -1565,7 +1311,7 @@ class StarSim(object):
                     self.filter_name=self.data[self.instruments[i]]['filter']
                     self.compute_forward(observables=j,t=self.data[self.instruments[i]][j]['t'],inversion=True)
                     
-                    if j=='lc':
+                    if self.data[self.instruments[i]][j]['offset_type']=='multiplicative': #j=='lc':
                         
                         if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
                             offset=1.0
@@ -1573,7 +1319,7 @@ class StarSim(object):
 
                         elif self.data[self.instruments[i]][j]['fix_offset']:
                             offset=1.0
-                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y']/offset,self.data[self.instruments[i]][j]['yerr']/offset), method='Nelder-Mead')
+                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
                             jitter=res.x[0]
                             
                         
@@ -1592,7 +1338,7 @@ class StarSim(object):
                         l+=1
                     
                     
-                    else: #spectroscopic case
+                    else: #linear offset
 
                         if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
                             offset=0.0
@@ -1625,24 +1371,14 @@ class StarSim(object):
         l=0
         for i in range(len(self.instruments)):
             for j in self.observables[i]:
-                if j=='lc': #photometric case
-                    ax[l].fill_between(t[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt]-np.std(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt]+np.std(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],color='k',alpha=0.3)
-                    ax[l].plot(t[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],'k')
-                    if fold is True:
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t']/self.rotation_period%1*self.rotation_period,self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue')
-                    else:
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue')
-                    ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
-                    l+=1
-                else: #spectroscopic case
-                    ax[l].fill_between(t[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt]-np.std(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt]+np.std(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],color='k',alpha=0.3)
-                    ax[l].plot(t[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],'k')
-                    if fold is True:
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t']/self.rotation_period%1*self.rotation_period,self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue')
-                    else:
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue')
-                    ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
-                    l+=1
+                ax[l].fill_between(t[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt]-np.std(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt]+np.std(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],color='k',alpha=0.3)
+                ax[l].plot(t[idxsrt],np.mean(stack_dic['{}_{}'.format(i,j)],axis=0)[idxsrt],'k')
+                if fold is True:
+                    ax[l].errorbar(self.data[self.instruments[i]][j]['t']/self.rotation_period%1*self.rotation_period,self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue')
+                else:
+                    ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue')
+                ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
+                l+=1
 
         ofilename = Path(__file__).parent  / 'plots' / 'MCMCoptimization_timeseries_result.png'
         plt.savefig(ofilename,dpi=200)
@@ -1713,7 +1449,7 @@ class StarSim(object):
                 self.filter_name=self.data[self.instruments[i]]['filter']
                 self.compute_forward(observables=j,t=self.data[self.instruments[i]][j]['t'],inversion=True)
 
-                if j=='lc':
+                if self.data[self.instruments[i]][j]['offset_type']=='multiplicative':
                     
                     if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
                         offset=1.0
@@ -1721,7 +1457,7 @@ class StarSim(object):
 
                     elif self.data[self.instruments[i]][j]['fix_offset']:
                         offset=1.0
-                        res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y']/offset,self.data[self.instruments[i]][j]['yerr']/offset), method='Nelder-Mead')
+                        res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
                         jitter=res.x[0]
                         
                     
@@ -1738,15 +1474,15 @@ class StarSim(object):
                     self.compute_forward(observables=j,t=t,inversion=True)
                     if fold is True:
                         ax[l].plot(phase[idxsrt],self.results[j][idxsrt],'k',label='Offset={:.2f}, Jitter={:.4f}'.format(offset,jitter))
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t']/self.rotation_period%1*self.rotation_period,self.data[self.instruments[i]][j]['y']/offset,np.sqrt((self.data[self.instruments[i]][j]['yerr']/offset)**2+jitter**2),fmt='bo',ecolor='lightblue')
+                        ax[l].errorbar(self.data[self.instruments[i]][j]['t']/self.rotation_period%1*self.rotation_period,self.data[self.instruments[i]][j]['y']/offset,np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2)/offset,fmt='bo',ecolor='lightblue')
                     else:
                         ax[l].plot(t,self.results[j],'k',label='Offset={:.2f}, Jitter={:.4f}'.format(offset,jitter))
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y']/offset,np.sqrt((self.data[self.instruments[i]][j]['yerr']/offset)**2+jitter**2),fmt='bo',ecolor='lightblue')
+                        ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y']/offset,np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2)/offset,fmt='bo',ecolor='lightblue')
                     ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
                     ax[l].legend()
                     l+=1
                 
-                else: #spectroscopic case
+                else: #linear offset
 
                     if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
                         offset=0.0
@@ -1841,7 +1577,7 @@ class StarSim(object):
                     self.filter_name=self.data[self.instruments[i]]['filter']
                     self.compute_forward(observables=j,t=self.data[self.instruments[i]][j]['t'],inversion=True)
 
-                    if j=='lc':
+                    if self.data[self.instruments[i]][j]['offset_type']=='multiplicative':
                         
                         if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
                             offset=1.0
@@ -1849,7 +1585,7 @@ class StarSim(object):
 
                         elif self.data[self.instruments[i]][j]['fix_offset']:
                             offset=1.0
-                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y']/offset,self.data[self.instruments[i]][j]['yerr']/offset), method='Nelder-Mead')
+                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
                             jitter=res.x[0]                           
                         
                         elif self.data[self.instruments[i]][j]['fix_jitter']:
@@ -1864,15 +1600,17 @@ class StarSim(object):
 
                         self.compute_forward(observables=j,t=t,inversion=True)
                         if k==bestlnL:
-                            ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue',zorder=10,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))                        
+                            ax[l].plot(t,self.results[j]*offset,'r--',zorder=11,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))
+                            ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2),fmt='bo',ecolor='lightblue',zorder=10)                        
                             ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
                             ax[l].legend()
+                        
                         store_results[k,l,:]=self.results[j]*offset
                         # ax[l].plot(t,self.results[j]*offset,c=cmap.to_rgba(lnLs[k]),alpha=0.5)
                         l+=1
                     
 
-                    else: #spectroscopic case
+                    else: #linear offset
 
                         if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
                             offset=0.0
@@ -1896,16 +1634,16 @@ class StarSim(object):
                         self.compute_forward(observables=j,t=t,inversion=True)
                         store_results[k,l,:]=self.results[j]+offset
                         if k==bestlnL:
-                            ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue',zorder=10,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))
+                            ax[l].plot(t,self.results[j]+offset,'r--',zorder=11,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))
+                            ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2),fmt='bo',ecolor='lightblue',zorder=10)
                             ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
                             ax[l].legend()
-                        # ax[l].plot(t,self.results[j]+offset,c=cmap.to_rgba(lnLs[k]),alpha=0.5)
                         l+=1
 
         for i in range(num_obs):
             ax[i].plot(t,np.mean(store_results[:,i],axis=0),'k')
             ax[i].fill_between(t,np.mean(store_results[:,i],axis=0)-np.std(store_results[:,i],axis=0),np.mean(store_results[:,i],axis=0)+np.std(store_results[:,i],axis=0),color='k',alpha=0.2)
-            ax[i].plot(t,store_results[bestlnL,i,:],'r--',zorder=11)
+            
 
 
 
@@ -2244,7 +1982,6 @@ class StarSim(object):
 
         bestlnL=np.argmax(lnLsnew)
         for k in range(len(best_maps_new)):
-            print(k)
             self.spot_map = best_maps_new[k]
             self.temperature_photosphere = paramsnew[k][0]
             self.spot_T_contrast = paramsnew[k][1]
@@ -2274,7 +2011,7 @@ class StarSim(object):
                     self.filter_name=self.data[self.instruments[i]]['filter']
                     self.compute_forward(observables=j,t=self.data[self.instruments[i]][j]['t'],inversion=True)
 
-                    if j=='lc':
+                    if self.data[self.instruments[i]][j]['offset_type']=='multiplicative':
                         
                         if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
                             offset=1.0
@@ -2282,7 +2019,7 @@ class StarSim(object):
 
                         elif self.data[self.instruments[i]][j]['fix_offset']:
                             offset=1.0
-                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y']/offset,self.data[self.instruments[i]][j]['yerr']/offset), method='Nelder-Mead')
+                            res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
                             jitter=res.x[0]                           
                         
                         elif self.data[self.instruments[i]][j]['fix_jitter']:
@@ -2297,15 +2034,15 @@ class StarSim(object):
 
                         self.compute_forward(observables=j,t=t,inversion=True)
                         if k==bestlnL:
-                            ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue',zorder=10,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))                        
+                            ax[l].plot(t,self.results[j]*offset,'r--',zorder=11,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))
+                            ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2),fmt='bo',ecolor='lightblue',zorder=10)                        
                             ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
                             ax[l].legend()
                         store_results[k,l,:]=self.results[j]*offset
-                        # ax[l].plot(t,self.results[j]*offset,c=cmap.to_rgba(lnLs[k]),alpha=0.5)
                         l+=1
                     
 
-                    else: #spectroscopic case
+                    else: #linear offset
 
                         if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
                             offset=0.0
@@ -2329,128 +2066,19 @@ class StarSim(object):
                         self.compute_forward(observables=j,t=t,inversion=True)
                         store_results[k,l,:]=self.results[j]+offset
                         if k==bestlnL:
-                            ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr'],fmt='bo',ecolor='lightblue',zorder=10,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))
+                            ax[l].plot(t,self.results[j]+offset,'r--',zorder=11,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))
+                            ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2),fmt='bo',ecolor='lightblue',zorder=10)
                             ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
                             ax[l].legend()
-                        # ax[l].plot(t,self.results[j]+offset,c=cmap.to_rgba(lnLs[k]),alpha=0.5)
                         l+=1
 
         for i in range(num_obs):
             ax[i].plot(t,np.mean(store_results[:,i],axis=0),'k')
             ax[i].fill_between(t,np.mean(store_results[:,i],axis=0)-np.std(store_results[:,i],axis=0),np.mean(store_results[:,i],axis=0)+np.std(store_results[:,i],axis=0),color='k',alpha=0.2)
-            ax[i].plot(t,store_results[bestlnL,i,:],'r--',zorder=11)
+            
 
 
         ofilename = Path(__file__).parent  / 'plots' / 'inversion_timeseries_result.png'
         plt.savefig(ofilename,dpi=200)
         # plt.show(block=True)
         plt.close()
-
-    def plot_MCMCPSO_inversion_results(self,DeltalnL):
-
-        #read the results
-        filename = Path(__file__).parent / 'results' / 'inversion_MCMCPSO_stats.npy'
-        res = np.load(filename,allow_pickle=True)
-
-        lnLs=res[0]
-        params=np.vstack(res[1]).T
-        ndim=np.sum(self.fit)
-
-        p=np.zeros([ndim,len(lnLs)])
-        # print(P)
-        ii=0
-        for i in range(len(self.fit)):
-          if self.fit[i]==1:
-            p[ii,:]=params[i,:]
-            ii+=1
-
-
-        
-        fig1 = plt.figure(figsize=(15,12))
-        
-        for ip in range(ndim):
-          plt.subplot(m.ceil(ndim/4),4,ip+1)
-          plt.plot(p[ip],lnLs,'k.')
-          plt.axhline(np.max(lnLs)-DeltalnL,color='r',ls=':')
-          plt.ylabel('lnL')
-          # left=np.min(xtot[ytot>(np.max(ytot)-15),ip])
-          # right=np.max(xtot[ytot>(np.max(ytot)-15),ip])
-          plt.ylim([np.max(lnLs)-DeltalnL*3,np.max(lnLs)+DeltalnL/10])
-          # plt.xlim([left-(right-left)*0.2,right+(right-left)*0.2])
-          plt.xlabel(self.lparamfit[ip])
-        
-        ofilename = Path(__file__).parent  / 'plots' / 'inversion_MCMCPSO_likelihoods.png'
-        plt.savefig(ofilename,dpi=200)
-        #plt.show(block=True)
-        plt.close()
-
-        pcorner=p[:,lnLs>(np.nanmax(lnLs)-DeltalnL)]
-        lnLsnew=lnLs[lnLs>(np.nanmax(lnLs)-DeltalnL)]
-        fig2, axes = plt.subplots(len(self.lparamfit),len(self.lparamfit), figsize=(2.3*len(self.lparamfit),2.3*len(self.lparamfit)))
-        corner.corner(pcorner.T,bins=10,plot_contours=False,fig=fig2,max_n_ticks=2,labels=self.lparamfit,label_kwargs={'fontsize':13},quantiles=(0.16,0.5,0.84),show_titles=True)
-        
-        ofilename = Path(__file__).parent / 'plots' / 'inversion_MCMCPSO_cornerplot.png'
-        plt.savefig(ofilename,dpi=200)
-        #plt.show(block=True)
-        plt.close()
-
-
-        param_inv=[]
-        # print(P)
-        ii=0
-        for i in range(len(self.fit)):
-          if self.fit[i]==0:
-            param_inv.append(np.array(self.vparam[i]))
-          elif self.fit[i]==1:
-            param_inv.append(np.array(pcorner[ii]))
-            ii=ii+1
-        
-        vsini_inv= 2*np.pi*(param_inv[7]*696342)*np.cos(np.deg2rad(90-param_inv[6]))/(param_inv[5]*86400) #in km/s
-        if self.limb_darkening_law == 'linear':
-            a_LD=param_inv[8]
-            b_LD=param_inv[8]*0
-        elif self.limb_darkening_law == 'quadratic':
-            a_LD=2*np.sqrt(param_inv[8])*param_inv[9]
-            b_LD=np.sqrt(param_inv[8])*(1-2*param_inv[9])
-        elif self.limb_darkening_law == 'sqrt':
-            a_LD=np.sqrt(param_inv[8])*(1-2*param_inv[9]) 
-            b_LD=2*np.sqrt(param_inv[8])*param_inv[9]
-        elif self.limb_darkening_law == 'log':
-            a_LD=param_inv[9]*param_inv[8]**2+1
-            b_LD=param_inv[8]**2-1
-
-
-        s='Results of the inversion process with DeltalnL<{:.1f} \n'.format(DeltalnL)
-        print('Results of the inversion process:')
-        s+='    -Mean and 1 sigma confidence interval:\n'
-        print('\t -Mean and 1 sigma confidence interval:')
-        for ip in range(len(self.vparam)):
-          if self.fit[ip]==1:
-            s+='        {} = {:.5f}+{:.5f}-{:.5f}\n'.format(self.lparam[ip],np.median(param_inv[ip]),np.quantile(param_inv[ip],0.84135)-np.median(param_inv[ip]),np.median(param_inv[ip])-np.quantile(param_inv[ip],0.15865))
-            print('\t \t {} = {:.5f}+{:.5f}-{:.5f}'.format(self.lparam[ip],np.median(param_inv[ip]),np.quantile(param_inv[ip],0.84135)-np.median(param_inv[ip]),np.median(param_inv[ip])-np.quantile(param_inv[ip],0.15865)))
-          else:
-            s+='        {} = {:.5f} (fixed)\n'.format(self.lparam[ip],self.vparam[ip])
-            print('\t \t',self.lparam[ip],' = ',self.vparam[ip],'(fixed) ') 
-        s+='        $vsini$ = {:.5f}+{:.5f}-{:.5f}\n'.format(np.median(vsini_inv),np.quantile(vsini_inv,0.84135)-np.median(vsini_inv),np.median(vsini_inv)-np.quantile(vsini_inv,0.15865))
-        s+='        LD_a = {:.5f}+{:.5f}-{:.5f}\n'.format(np.median(a_LD),np.quantile(a_LD,0.84135)-np.median(a_LD),np.median(a_LD)-np.quantile(a_LD,0.15865))
-        s+='        LD_b = {:.5f}+{:.5f}-{:.5f}\n'.format(np.median(b_LD),np.quantile(b_LD,0.84135)-np.median(b_LD),np.median(b_LD)-np.quantile(b_LD,0.15865)) 
-
-        s+='    -Mean and standard deviation:\n'
-        print('\t -Mean and standard deviation:')
-        for ip in range(len(self.vparam)):
-          if self.fit[ip]==1:
-            s+='        {} = {:.5f}+-{:.5f}\n'.format(self.lparam[ip],np.median(param_inv[ip]),np.std(param_inv[ip]))
-            print('\t \t {} = {:.5f}+-{:.5f}'.format(self.lparam[ip],np.median(param_inv[ip]),np.std(param_inv[ip])))
-        s+='    -Best solution, with maximum log-likelihood of {:.5f}\n'.format(np.max(lnLsnew))
-        print('\t -Best solution, with maximum log-likelihood of',np.max(lnLsnew))  
-        for ip in range(len(self.vparam)):
-          if self.fit[ip]==1:
-            s+='        {} = {:.5f}\n'.format(self.lparam[ip],param_inv[ip][np.argmax(lnLsnew)])
-            print('\t \t {} = {:.5f}'.format(self.lparam[ip],param_inv[ip][np.argmax(lnLsnew)]))
-
-        fig = plt.figure(figsize=(6,10))
-        plt.annotate(s, xy=(0.0, 1.0),ha='left',va='top')
-        plt.axis('off')
-        plt.tight_layout()
-        ofilename = Path(__file__).parent / 'plots' / 'inversion_MCMCPSO_results.png'
-        plt.savefig(ofilename,dpi=200)

@@ -11,13 +11,14 @@ def dummy():
 def fit_multiplicative_offset_jitter(x0,f,y,dy):
     off=x0[0]
     jit=x0[1]
-    lnL=-0.5*np.sum(((y-f*off)/(np.sqrt(dy**2+jit**2)))**2.0+np.log(2.0*np.pi)+np.log(dy**2+jit**2))
+    newerr=np.sqrt((dy)**2+jit**2)/off
+    lnL=-0.5*np.sum(((y/off-f)/(newerr))**2.0+np.log(2.0*np.pi)+np.log(newerr**2))
     return -lnL
 
 @nb.njit(cache=True,error_model='numpy')
 def fit_only_multiplicative_offset(x0,f,y,dy):
     off=x0
-    lnL=-0.5*np.sum(((y-f*off)/(dy))**2.0+np.log(2.0*np.pi)+np.log(dy**2))
+    lnL=-0.5*np.sum(((y/off-f)/(dy/off))**2.0+np.log(2.0*np.pi)+np.log((dy/off)**2))
     return -lnL
 
 @nb.njit(cache=True,error_model='numpy')
@@ -353,6 +354,11 @@ def compute_spot_position(t,spot_map,ref_time,Prot,diff_rot,Revo,Q):
         elif Revo == 'linear':
             if t>=tini and t<=tfin:
                 rad=Rcoef[0]+(t-tini)*(Rcoef[1]-Rcoef[0])/dur
+            else:
+                rad=0.0
+        elif Revo == 'quadratic':
+            if t>=tini and t<=tfin:
+                rad=-4*Rcoef[0]/(dur*(1-2*tini))*(t-tini)*(t-tini-dur)
             else:
                 rad=0.0
         
