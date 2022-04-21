@@ -1,0 +1,14 @@
+LICENSE
+README.md
+setup.py
+starsim/PSO.py
+starsim/SA.py
+starsim/__init__.py
+starsim/nbspectra.py
+starsim/spectra.py
+starsim/starsim.py
+starsim.egg-info/PKG-INFO
+starsim.egg-info/SOURCES.txt
+starsim.egg-info/dependency_links.txt
+starsim.egg-info/requires.txt
+starsim.egg-info/top_level.txt
