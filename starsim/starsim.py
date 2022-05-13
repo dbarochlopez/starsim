@@ -148,12 +148,12 @@ class StarSim(object):
                 sys.exit('The spot map file spotmap.dat is empty')
 
             #select mode
-            if self.simulation_mode == 'precise':
+            if self.simulation_mode == 'grid':
                 pass
             elif self.simulation_mode == 'fast':
                 pass
             else: 
-                sys.exit('simulation_mode in configuration file is not valid. Valid modes are "fast" or "precise".')
+                sys.exit('simulation_mode in configuration file is not valid. Valid modes are "fast" or "grid".')
 
             #mode to select the template used to compute the ccf. Model are Phoenix models, mask are custom masks. 
             if self.ccf_template == 'model': #use phoenix models
@@ -218,7 +218,7 @@ class StarSim(object):
         else:
             return conf_file_Object
 
-    # @profile
+
     def compute_forward(self,observables=['lc'],t=None,inversion=False):
 
         if inversion==False:
@@ -252,7 +252,7 @@ class StarSim(object):
 
              
             
-            if self.simulation_mode == 'precise':
+            if self.simulation_mode == 'grid':
                 brigh_grid_ph, flx_ph = spectra.compute_immaculate_lc(self,Ngrid_in_ring,acd,amu,pare,flnp_lc,f_filt,wvp_lc) #returns spectrum of grid in ring N, its brightness, and the total flux
                 brigh_grid_sp, flx_sp = spectra.compute_immaculate_lc(self,Ngrid_in_ring,acd,amu,pare,flns_lc,f_filt,wvp_lc) #returns spectrum of grid in ring N, its brightness, and the total flux
                 brigh_grid_fc, flx_fc = brigh_grid_sp, flx_sp #if there are no faculae
@@ -263,9 +263,7 @@ class StarSim(object):
 
             #FAST MODE ONLY WORKS FOR NON-OVERLAPPING SPOTS. NOT FACULAE AND NOT PLANETS YET.
             elif self.simulation_mode == 'fast': #in fast mode only immaculate photosphere is computed
-                # t,FLUX,ff_ph,ff_sp,ff_fc,ff_pl=spectra.generate_rotating_photosphere_fast_lc(self,Ngrid_in_ring,acd,amu,pare,flnp_lc,flns_lc,f_filt,wvp_lc)
                 t,FLUX,ff_ph,ff_sp,ff_fc,ff_pl=nbspectra.generate_rotating_photosphere_fast_lc(self.obs_times,Ngrid_in_ring,acd,amu,pare,flnp_lc,flns_lc,f_filt(wvp_lc),self.n_grid_rings,self.use_phoenix_limb_darkening,self.limb_darkening_law,self.limb_darkening_q1,self.limb_darkening_q2,self.spot_map,self.reference_time,self.rotation_period,self.differential_rotation,self.spots_evo_law,self.facular_area_ratio,self.inclination,self.temperature_photosphere,self.temperature_facula,self.simulate_planet,self.planet_esinw,self.planet_ecosw,self.planet_transit_t0,self.planet_period,self.planet_radius,self.planet_impact_param,self.planet_semi_major_axis,self.planet_spin_orbit_angle)
-
 
 
             self.results['time']=t
@@ -274,7 +272,6 @@ class StarSim(object):
             self.results['ff_sp']=ff_sp
             self.results['ff_pl']=ff_pl
             self.results['ff_fc']=ff_fc
-
 
 
         if 'rv' in observables or 'bis' in observables or 'fwhm' in observables or 'contrast' in observables: #use HR templates. Interpolate for temperatures and logg for different elements. Cut to desired wavelength.
@@ -324,7 +321,7 @@ class StarSim(object):
                 rv_fc = rv - fun_bis_ph(ccf_fc)
 
             
-            if self.simulation_mode == 'precise':
+            if self.simulation_mode == 'grid':
                 #COMPUTE CCFS of each ring of a non-rotating IMMACULATE PHOTOSPHERE, and total flux of the immaculate star
                 # print('Computing photosphere')
 
@@ -372,7 +369,7 @@ class StarSim(object):
 
 
         if 'crx' in observables: #use HR templates in different wavelengths to compute chromatic index. Interpolate for temperatures and logg for different elements. Cut to desired wavelength.
-            rvel=self.vsini*np.sin(theta)*np.sin(phi)#*np.cos(self.inclination) #radial velocities of each grid
+            rvel=self.vsini*np.sin(theta)*np.sin(phi) #radial velocities of each grid
 
             pathorders = Path(__file__).parent / 'orders_CRX' / self.orders_CRX_filename
             # print('Reading the file in',pathorders,'containing the wavelengthranges of each echelle order,to compute the CRX')
@@ -423,7 +420,7 @@ class StarSim(object):
                     rv_fc = rv - fun_bis_ph(ccf_fc)
 
 
-                if self.simulation_mode == 'precise':
+                if self.simulation_mode == 'grid':
                     #COMPUTE CCFS of each ring of a non-rotating IMMACULATE PHOTOSPHERE, and total flux of the immaculate star
                     # print('Computing photosphere')
 

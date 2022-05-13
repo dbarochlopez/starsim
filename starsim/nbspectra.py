@@ -950,9 +950,9 @@ def generate_rotating_photosphere_fast_lc(obs_times,Ngrid_in_ring,acd,amu,pare,f
         if use_phoenix_mu:
             idx_upp=len(acd)-1-np.searchsorted(np.flip(acd),amu[i]*0.999999999,side='right') #acd is sorted inversely
             idx_low=idx_upp+1
-            dlp = flnp[idx_low]+(flnp[idx_upp]-flnp[idx_low])*(amu[i]-acd[idx_low])/(acd[idx_upp]-acd[idx_low]) #limb darkening
+            dlp = flnp[idx_low]+(flnp[idx_upp]-flnp[idx_low])*(amu[i]-acd[idx_low])/(acd[idx_upp]-acd[idx_low]) #spectra of the projected angle. includes limb darkening
         
-        else: #or use a specified limb darkening law
+        else: #or use a specified limb darkening law to multiply central spectra
             dlp = flnp[0]*limb_darkening_law(LD_law,LD1,LD2,amu[i])
 
 
@@ -998,7 +998,7 @@ def generate_rotating_photosphere_fast_lc(obs_times,Ngrid_in_ring,acd,amu,pare,f
             if (dist-spot_pos[i,2]*np.sqrt(1.0+Q)) > (m.pi/2): #spot & facula not visible. Jump to next spot.
                 continue
             
-            beta=np.pi/2-dist #angle of te spot with the edge of the star
+            beta=np.pi/2-dist #angle of the spot with the edge of the star
             alpha=spot_pos[i,2] #angle of the radii of the spot
             ############ FACULA PROJECTED AREA ##################
             if Q>0.0: #facula
@@ -1498,7 +1498,7 @@ def generate_rotating_photosphere_fast_rv(obs_times,Ngrid_in_ring,acd,amu,pare,r
             flux_spph=np.sum(dls*pare_spot/(4*np.pi)) #flux of the spot
 
 
-            rv_phsp = rv_ph + rvel_spot + fun_cifist(ccf_ph,amu_spot)*1000.0 + CB
+            rv_phsp = rv_ph + rvel_spot + fun_cifist(ccf_ph,amu_spot)*1000.0*CB
             rv_spph = rv_sp + rvel_spot 
             ccf_phsp=interpolation_nb(rv,rv_phsp,ccf_ph,ccf_ph[0],ccf_ph[-1]) #still normalized ccf.
             ccf_spph=interpolation_nb(rv,rv_spph,ccf_sp,ccf_sp[0],ccf_sp[-1]) #still normalized ccf.
@@ -1525,7 +1525,7 @@ def generate_rotating_photosphere_fast_rv(obs_times,Ngrid_in_ring,acd,amu,pare,r
                 flux_fcph=np.sum(dlp*pare_fac/(4*np.pi))*((temp_ph+dtfmu)/(temp_fc))**4 #flux of the spot
 
                 #Compute RVshift, shift CCF, and iterpolate the CCF values.                
-                rv_phfc = rv_ph + rvel_fac + fun_cifist(ccf_ph,amu_fac)*1000.0 + CB
+                rv_phfc = rv_ph + rvel_fac + fun_cifist(ccf_ph,amu_fac)*1000.0*CB
                 rv_fcph = rv_fc + rvel_fac 
                 ccf_phfc=interpolation_nb(rv,rv_phfc,ccf_ph,ccf_ph[0],ccf_ph[-1]) #still normalized ccf.
                 ccf_fcph=interpolation_nb(rv,rv_fcph,ccf_fc,ccf_fc[0],ccf_fc[-1]) #still normalized ccf.
@@ -1634,7 +1634,7 @@ def generate_rotating_photosphere_fast_rv(obs_times,Ngrid_in_ring,acd,amu,pare,r
 
                 flux_phpl=np.sum(dlp*pare_pl/(4*np.pi)) #flux of the photosphere occuppied by the planet.
 
-                rv_phpl = rv_ph + rvel_pl + fun_cifist(ccf_ph,amu_pl)*1000.0 + CB
+                rv_phpl = rv_ph + rvel_pl + fun_cifist(ccf_ph,amu_pl)*1000.0*CB
                 ccf_phpl=interpolation_nb(rv,rv_phpl,ccf_ph,ccf_ph[0],ccf_ph[-1]) #still normalized ccf.
                 #Compute RVshift, shift CCF, and iterpolate the CCF values. 
                 CCF_phpl = ccf_phpl*flux_phpl/fluxph #the ccf of the element photosphere is the CCF weighted by the flux of the element over all the flux.

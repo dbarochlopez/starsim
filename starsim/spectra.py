@@ -344,115 +344,6 @@ def generate_rotating_photosphere_lc(self,Ngrid_in_ring,pare,amu,bph,bsp,bfc,flx
 #                              SPECTROSCOPY FUNCTIONS                                  #
 ########################################################################################
 ########################################################################################
-# def interpolate_Phoenix_mu(self,temp,grav,wv,plot=False):
-#     """Cut and interpolate phoenix models at the desired wavelengths, temperatures, logg and metalicity(not yet). For spectroscopy.
-#     Inputs
-#     temp: temperature of the model; 
-#     grav: logg of the model
-#     Returns
-#     creates a temporal file with the interpolated spectra at the temp and grav desired, for each surface element.
-#     """
-#     #Demanar tambe la resolucio i ficarho aqui.
-
-#     import warnings
-#     warnings.filterwarnings("ignore")
-
-#     # path1='Phoenix' #str(self.conf_file.get('files','phoenix_path')) #path to phoenix files relative to package
-#     path = (Path(__file__).parent / 'models/Phoenix_mu') #path relatve to working directory 
-#     files = [x.name for x in path.glob('lte*fits') if x.is_file()]
-#     # path = str(Path(__file__).parent / 'models/Phoenix_mu') #path relatve to working directory 
-#     # files=[f.split('/')[-1] for f in glob.glob(path+"/lte*")] #list of phoenix.fits models
-#     list_temp=np.unique([float(t[3:8]) for t in files])
-#     list_grav=np.unique([float(t[9:13]) for t in files])
-#     # met=np.unique([float(t[14:17]) for t in f]) #for metalicities. Not yet enabled.
-
-#     #check if the parameters are inside the grid of models
-#     if grav<np.min(list_grav) or grav>np.max(list_grav):
-#         sys.exit('Error in the interpolation of Phoenix_mu models. The desired logg is outside the grid of models, extrapolation is not supported. Please download the \
-#         Phoenix intensity models covering the desired logg from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73')
-
-#     if temp<np.min(list_temp) or temp>np.max(list_temp):
-#         sys.exit('Error in the interpolation of Phoenix_mu models. The desired T is outside the grid of models, extrapolation is not supported. Please download the \
-#         Phoenix intensity models covering the desired T from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73')
-        
-
-
-#     lowT=list_temp[list_temp<=temp].max() #find the model with the temperature immediately below the desired temperature
-#     uppT=list_temp[list_temp>=temp].min() #find the model with the temperature immediately above the desired temperature
-#     lowg=list_grav[list_grav<=grav].max() #find the model with the logg immediately below the desired logg
-#     uppg=list_grav[list_grav>=grav].min() #find the model with the logg immediately above the desired logg
-
-#     #load the flux of the four phoenix model
-#     name_lowTlowg='lte{:05d}-{:.2f}-0.0.PHOENIX-ACES-AGSS-COND-SPECINT-2011.fits'.format(int(lowT),lowg)
-#     name_lowTuppg='lte{:05d}-{:.2f}-0.0.PHOENIX-ACES-AGSS-COND-SPECINT-2011.fits'.format(int(lowT),uppg)
-#     name_uppTlowg='lte{:05d}-{:.2f}-0.0.PHOENIX-ACES-AGSS-COND-SPECINT-2011.fits'.format(int(uppT),lowg)
-#     name_uppTuppg='lte{:05d}-{:.2f}-0.0.PHOENIX-ACES-AGSS-COND-SPECINT-2011.fits'.format(int(uppT),uppg)
-
-#     #Check if the files exist in the folder
-#     if name_lowTlowg not in files:
-#         sys.exit('The file '+name_lowTlowg+' required for the interpolation does not exist. Please download it from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73 and add it to your path: '+path)
-#     if name_lowTuppg not in files:
-#         sys.exit('The file '+name_lowTuppg+' required for the interpolation does not exist. Please download it from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73 and add it to your path: '+path)
-#     if name_uppTlowg not in files:
-#         sys.exit('The file '+name_uppTlowg+' required for the interpolation does not exist. Please download it from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73 and add it to your path: '+path)
-#     if name_uppTuppg not in files:
-#         sys.exit('The file '+name_uppTuppg+' required for the interpolation does not exist. Please download it from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73 and add it to your path: '+path)
- 
-#     wavelength=np.arange(500,26000) #wavelength in A
-
-#     #read Phoenix intensity model files
-
-#     with fits.open(path / name_lowTlowg) as hdul:
-#         amu = hdul[1].data #read proj. angles of each column
-#         amu = np.append(amu[::-1],0.0) #add proj angle 0 (edge of star)
-#         flux_lowTlowg=np.zeros([len(amu)-1,len(wv)])
-#         for i in range(len(amu)-1):
-#             flux_lowTlowg[i,:]=nbspectra.interpolation_nb(wv,wavelength,np.asarray(hdul[0].data[i,:],dtype=np.float64),0,0)
-
-#     with fits.open(path / name_lowTuppg) as hdul:
-#         flux_lowTuppg=np.zeros([len(amu)-1,len(wv)])
-#         for i in range(len(amu)-1):
-#             flux_lowTuppg[i,:]=nbspectra.interpolation_nb(wv,wavelength,np.asarray(hdul[0].data[i,:],dtype=np.float64),0,0)
-
-#     with fits.open(path / name_uppTlowg) as hdul:
-#         flux_uppTlowg=np.zeros([len(amu)-1,len(wv)])
-#         for i in range(len(amu)-1):
-#             flux_uppTlowg[i,:]=nbspectra.interpolation_nb(wv,wavelength,np.asarray(hdul[0].data[i,:],dtype=np.float64),0,0)
-
-#     with fits.open(path / name_uppTuppg) as hdul:
-#         flux_uppTuppg=np.zeros([len(amu)-1,len(wv)])
-#         for i in range(len(amu)-1):
-#             flux_uppTuppg[i,:]=nbspectra.interpolation_nb(wv,wavelength,np.asarray(hdul[0].data[i,:],dtype=np.float64),0,0)
-
-
-#     #interpolate in temperature for the two gravities
-#     if uppT==lowT: #to avoid nans
-#         flux_lowg = flux_lowTlowg 
-#         flux_uppg = flux_lowTuppg
-#     else:
-#         flux_lowg = flux_lowTlowg + ( (temp - lowT) / (uppT - lowT) ) * (flux_uppTlowg - flux_lowTlowg)
-#         flux_uppg = flux_lowTuppg + ( (temp - lowT) / (uppT - lowT) ) * (flux_uppTuppg - flux_lowTuppg)
-#     #interpolate in log g
-#     if uppg==lowg: #to avoid dividing by 0
-#         flux = flux_lowg
-#     else:
-#         flux = flux_lowg + ( (grav - lowg) / (uppg - lowg) ) * (flux_uppg - flux_lowg)
-
-
-
-#     angle0 = flux[0]*0.0 #LD of 90 deg, to avoid dividing by 0? (not sure, ask Kike)
-
-#     flux_joint = np.vstack([flux[::-1],angle0]) #add LD coeffs at 0 and 1 proj angles
-#     flpk=flux_joint[0]*np.pi*np.sin(np.cos(amu[0]))**2#Add all fluxes of all angles multiplied by their areas to compute the integrated flux
-#     for i in range(1,len(amu)):
-#         flpk=flpk+flux_joint[i]*(np.sin(np.cos(amu[i]))**2-np.sin(np.cos(amu[i-1]))**2)*np.pi
-
-
-#     fnameout = Path(__file__).parent / 'tmp/models/Phoenix_mu_{:05d}-{:.2f}_{:.1f}-{:.1f}.npy'.format(int(temp),grav,self.wavelength_lower_limit,self.wavelength_upper_limit)
-#     np.save(fnameout,np.array([np.asarray(flux_joint,dtype=np.float32),np.asarray(flpk,dtype=np.float32),np.asarray(amu,dtype=np.float32)]))
-
-
-#     return amu, flpk, flux_joint
 
 
 def interpolate_Phoenix(self,temp,grav,plot=False):
@@ -596,7 +487,7 @@ def cifist_coeff_interpolate(amu):
     idx_upp=np.where(amv==amv_upp)[0][0]
 
     cxm=np.zeros([len(amv),7]) #coeff of the bisectors. NxM, N is number of angles, M=7, the degree of the polynomial
-    #PARAMS COMPUTED WITH HARPS MASK
+    #PARAMS FROM A CCF COMPUTED WITH HARPS MASK.
     cxm[0,:]=np.array([-3.51974861,11.1702017,-13.22368296,6.67694456,-0.63201573,-0.44695616,-0.36838495]) #1.0
     cxm[1,:]=np.array([-4.05903967,13.21901003,-16.47215949,9.51023171,-2.13104764,-0.05153799,-0.36973749]) #0.9
     cxm[2,:]=np.array([-3.92153131,12.76694663,-15.96958217,9.39599116,-2.34394028,0.12546611,-0.42092905]) #0.8
@@ -608,7 +499,7 @@ def cifist_coeff_interpolate(amu):
     cxm[8,:]=np.array([-11.62006536,39.30962189,-52.38161244,34.98243089,-12.40650704,2.57940618,-0.37337442]) #0.2
     cxm[9,:]=np.array([-14.14768805,47.9566719,-64.20294114,43.23156971,-15.57423374,3.13318175,-0.14451226]) #0.1
 
-    #PARAMS COMPUTED WITH PHOENIX TEMPLATE T=5770
+    #PARAMS FROM A CCF COMPUTED WITH PHOENIX TEMPLATE T=5770
     # cxm[0,:]=np.array([1.55948401e+01, -5.59100775e+01,  7.98788742e+01, -5.79129621e+01, 2.23124361e+01, -4.37451926e+00,  2.76815127e-02 ]) 
     # cxm[1,:]=np.array([1.48171843e+01, -5.31901561e+01,  7.60918868e+01, -5.51846846e+01, 2.12359712e+01, -4.15656905e+00,  3.09723630e-02 ])
     # cxm[2,:]=np.array([1.26415104e+01, -4.56361886e+01,  6.57500389e+01, -4.81159578e+01, 1.87476161e+01, -3.73215320e+00, -2.45358044e-02 ])
@@ -642,7 +533,7 @@ def cifist_coeff_interpolate(amu):
 
 
 def compute_immaculate_photosphere_rv(self,Ngrid_in_ring,acd,amu,pare,flpk,rv_ph,rv,ccf,rvel):
-    '''Assing the ccf to each grid element, Doppler shift, add LD, and add bisectors, in order to compute the ccf of the immaculate photosphere.
+    '''Asing the ccf to each grid element, Doppler shift, add LD, and add bisectors, in order to compute the ccf of the immaculate photosphere.
     input:
     acd: angles of the kurucz model
     flnp: flux of the HR norm. spectra.
@@ -682,7 +573,7 @@ def compute_immaculate_photosphere_rv(self,Ngrid_in_ring,acd,amu,pare,flpk,rv_ph
 
         flux_pix=(sccf[i]/Ngrid_in_ring[i])/flxph #brightness of 1 pixel normalized to total flux
 
-        rvs_ring[i,:]= rv_ph +  fun_cifist(ccf)*1000 + self.convective_shift  #add cifist bisector (in km/s, *1000 to convert to m/s), add a custom CB. No need to multiply by amu since the CCF is already.
+        rvs_ring[i,:]= rv_ph +  fun_cifist(ccf)*1000*self.convective_shift  #add cifist bisector (in km/s, *1000 to convert to m/s), multiply it by a CS factor.
         ccf_ring[i,:]=ccf*flux_pix #CCF values normalized to the contribution to the total flux of 1 pixel of this ring
         #Fer lo dels bisectors
 
