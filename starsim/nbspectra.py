@@ -1261,10 +1261,11 @@ def generate_rotating_photosphere_fast_lc(obs_times,Ngrid_in_ring,acd,amu,pare,f
 ###############
 #CCFS
 ###############
-# @nb.njit(cache=True,error_model='numpy') 
-# def fun_spot_bisect(ccf):
-#     rv=-0.61095587*ccf**5 -0.27009652*ccf**4 + 3.20415179*ccf**3 -4.12503903*ccf**2 + 1.82468626*ccf + 0.19032404 #Polynomial fit to ccf in Fig 2 of Dumusque 2014
-#     return rv
+@nb.njit(cache=True,error_model='numpy') 
+def fun_spot_bisect(ccf):
+    rv=-1.51773453*ccf**4 +3.52774949*ccf**3 -3.18794328*ccf**2 +1.22541774*ccf -0.22479665 #Polynomial fit to ccf in Fig 2 of Dumusque 2014, plus 400m/s to match Fig6 in Herrero 2016
+    return rv
+
 
 @nb.njit(cache=True,error_model='numpy') 
 def fun_cifist(ccf,amu):
@@ -1499,7 +1500,7 @@ def generate_rotating_photosphere_fast_rv(obs_times,Ngrid_in_ring,acd,amu,pare,r
 
 
             rv_phsp = rv_ph + rvel_spot + fun_cifist(ccf_ph,amu_spot)*1000.0*CB
-            rv_spph = rv_sp + rvel_spot 
+            rv_spph = rv_sp + rvel_spot + fun_spot_bisect(ccf_sp)*amu_spot*1000.0*CB
             ccf_phsp=interpolation_nb(rv,rv_phsp,ccf_ph,ccf_ph[0],ccf_ph[-1]) #still normalized ccf.
             ccf_spph=interpolation_nb(rv,rv_spph,ccf_sp,ccf_sp[0],ccf_sp[-1]) #still normalized ccf.
             #Compute RVshift, shift CCF, and iterpolate the CCF values. 
@@ -1526,7 +1527,7 @@ def generate_rotating_photosphere_fast_rv(obs_times,Ngrid_in_ring,acd,amu,pare,r
 
                 #Compute RVshift, shift CCF, and iterpolate the CCF values.                
                 rv_phfc = rv_ph + rvel_fac + fun_cifist(ccf_ph,amu_fac)*1000.0*CB
-                rv_fcph = rv_fc + rvel_fac 
+                rv_fcph = rv_fc + rvel_fac + fun_spot_bisect(ccf_fc)*amu_fac*1000.0*CB
                 ccf_phfc=interpolation_nb(rv,rv_phfc,ccf_ph,ccf_ph[0],ccf_ph[-1]) #still normalized ccf.
                 ccf_fcph=interpolation_nb(rv,rv_fcph,ccf_fc,ccf_fc[0],ccf_fc[-1]) #still normalized ccf.
                 #Compute RVshift, shift CCF, and iterpolate the CCF values. 

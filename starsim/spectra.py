@@ -522,14 +522,10 @@ def cifist_coeff_interpolate(amu):
     return p
 
 
-#Not used now
-# def dumusque_coeffs(amu):
-#     # coeffs=np.array([-1.51773453,  3.52774949, -3.18794328,  1.22541774,  0.17520335]) #Polynomial fit to ccf in Fig 2 of Dumusque 2014
-#     coeffs=np.array([-0.61095587, -0.27009652,  3.20415179, -4.12503903,  1.82468626,0.19032404]) #Fit to Fig 2 Dumusque 2014 + CIFIST at mu=1.0 - 0.35 (done to ensure that the resulting bisector is at ~250m/s as in the figure of Dumusque)
-
-
-#     p=np.poly1d(coeffs)
-#     return p
+def dumusque_coeffs(amu):
+    coeffs=np.array([-1.51773453,  3.52774949, -3.18794328,  1.22541774,  -0.22479665]) #Polynomial fit to ccf in Fig 2 of Dumusque 2014, plus 400m/s to match Fig6 in Herrero 2016
+    p=np.poly1d(coeffs)
+    return p
 
 
 def compute_immaculate_photosphere_rv(self,Ngrid_in_ring,acd,amu,pare,flpk,rv_ph,rv,ccf,rvel):
@@ -614,11 +610,11 @@ def compute_immaculate_spot_rv(self,Ngrid_in_ring,acd,amu,pare,flsk,rv_sp,rv,ccf
  
         # fun_cifist = self.fun_coeff_bisectors_amu(amu[i])
 
-        # fun_dumusque = self.fun_coeff_bisector_spots(amu[i])
+        fun_dumusque = self.fun_coeff_bisector_spots(amu[i])
 
         flux_pix=(sccf[i]/Ngrid_in_ring[i])/flxph #brightness of 1 pixel normalized to total flux
 
-        rvs_ring[i,:]= rv_sp  #We dont add any bisector nor CB to the spot CCF, since we dont know how it depends on amu. 
+        rvs_ring[i,:]= rv_sp + fun_dumusque*amu[i]*1000*self.convective_shift #add solar spot bisector (in km/s, *1000 to convert to m/s). Multiply by amu and multiply it by a CS factor.
         ccf_ring[i,:]=ccf*flux_pix #CCF values normalized to the contribution to the total flux of 1 pixel of this ring
         #Fer lo dels bisectors
 
@@ -667,7 +663,7 @@ def compute_immaculate_facula_rv(self,Ngrid_in_ring,acd,amu,pare,flpk,rv_fc,rv,c
  
         flux_pix=(sccf[i]/Ngrid_in_ring[i])/flxph #brightness of 1 pixel normalized to total flux
 
-        rvs_ring[i,:]= rv_fc #Same as spot  
+        rvs_ring[i,:]= rv_fc + fun_dumusque*amu[i]*1000*self.convective_shift #Same as spot. 
         ccf_ring[i,:]=ccf*flux_pix #CCF values normalized to the contribution to the total flux of 1 pixel of this ring
         #Fer lo dels bisectors
 

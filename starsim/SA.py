@@ -502,10 +502,9 @@ def inversion_SA(self,typ,only_inversion=False):
         T=T0*alpha**(k) #reduce temperature following cooling sequence
         #Generate new state. Must beinside bounds ans non overlapping.
         alarm=0
-        alarm2=0
         while True:
             v=np.random.uniform(0,1,ndim) #N random values 0 to 1
-            q=np.sign(v-0.5)*(T/((alarm2**2+1)*T0))*((1+(alarm2**2+1)*T0/T)**(np.abs(2*v-1))-1) #[-1,1], denser around 0 as T decreases
+            q=np.sign(v-0.5)*(T/(T0))*((1+T0/T)**(np.abs(2*v-1))-1) #[-1,1], denser around 0 as T decreases
 
             Xprop=Xacc+q*0.5*(ASboundfit[:,1]-ASboundfit[:,0]) #new state
 
@@ -514,15 +513,9 @@ def inversion_SA(self,typ,only_inversion=False):
             if np.any((ASboundfit[:,1]<Xprop)+(Xprop<ASboundfit[:,0])): 
                 Xprop[ASboundfit[:,1]<Xprop]=2*ASboundfit[:,1][ASboundfit[:,1]<Xprop]-Xprop[ASboundfit[:,1]<Xprop]
                 Xprop[Xprop<ASboundfit[:,0]]=2*ASboundfit[:,0][Xprop<ASboundfit[:,0]]-Xprop[Xprop<ASboundfit[:,0]]
-                alarm2+=1 #if the proposal is outside the bounds, make the next step shorter
-                if alarm2 == 1000:
-                    sys.exit('Check the bounds of the spot map. Values are outside the limit.')
-                
-                continue
-            alarm2=0 #reset the original step size
 
-            if alarm==10:
-                # print('10 rejected points')
+            if alarm==100:
+                # print('Warning, spots are overlapping.')
                 #If alarm, set X to limit.
                 break
 
@@ -551,7 +544,7 @@ def inversion_SA(self,typ,only_inversion=False):
                 continue
 
             break
-
+        print('\n',alarm,'\n')
         lnLprop=lnposteriorSA(self,p_aux,ASbounds,ASlogpriors,typ,mode_lc_params,mode_rv_params) #log-likelihood of new position
         DeltalnL=lnLprop-lnLacc
         if np.isnan(DeltalnL): #To avoid getting stuck at -inf

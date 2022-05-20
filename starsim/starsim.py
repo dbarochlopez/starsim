@@ -322,12 +322,9 @@ class StarSim(object):
 
             
             if self.simulation_mode == 'grid':
-                #COMPUTE CCFS of each ring of a non-rotating IMMACULATE PHOTOSPHERE, and total flux of the immaculate star
-                # print('Computing photosphere')
 
                 ccf_ph_g, flxph= spectra.compute_immaculate_photosphere_rv(self,Ngrid_in_ring,acd,amu,pare,flpk_rv,rv_ph,rv,ccf_ph,rvel) #return ccf of each grid, and also the integrated ccf
                 ccf_ph_tot = np.sum(ccf_ph_g,axis=0)
-                # print('Computing spot')
                 ccf_sp_g = spectra.compute_immaculate_spot_rv(self,Ngrid_in_ring,acd,amu,pare,flsk_rv,rv_sp,rv,ccf_sp,flxph,rvel)
                 ccf_fc_g = ccf_ph_g #to avoid errors, not used
                 if self.facular_area_ratio>0:
@@ -1101,7 +1098,7 @@ class StarSim(object):
         best_maps = np.asarray(res,dtype='object')[:,1]
         lnLs = np.asarray(res,dtype='object')[:,2]
 
-        ofilename = Path(__file__).parent / 'results' / 'inversion_MCMCSA_stats.npy'
+        ofilename = Path(__file__).parent / 'results' / 'optimize_inversion_SA_stats.npy'
         np.save(ofilename,np.array([lnLs,p_used,best_maps],dtype='object'),allow_pickle=True)
 
 
@@ -1822,7 +1819,7 @@ class StarSim(object):
 
 
         #read the results
-        filename = Path(__file__).parent / 'results' / 'inversion_MCMCSA_stats.npy'
+        filename = Path(__file__).parent / 'results' / 'optimize_inversion_SA_stats.npy'
         res = np.load(filename,allow_pickle=True)
 
         lnLs=res[0]
