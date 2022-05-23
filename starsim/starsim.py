@@ -1,5 +1,3 @@
-__all__ = ["StarSim"]
-
 import tqdm
 import numpy as np
 import emcee
@@ -22,7 +20,7 @@ from . import spectra
 from . import nbspectra
 from . import SA
 from numba import jit
-
+import starsim
 #initialize numba
 nbspectra.dummy()
 
@@ -31,8 +29,8 @@ class StarSim(object):
     Main Starsim class. Reads the configuration file and store the options into variables.
     """
     def __init__(self,conf_file_path='starsim.conf'):
-            path = Path(__file__).parent #path of working directory
-            self.conf_file_path = path / conf_file_path
+            self.path = Path(__file__).parent #path of working directory
+            self.conf_file_path = self.path / conf_file_path
             self.conf_file = self.__conf_init() 
             #files
             self.filter_name =  str(self.conf_file.get('files','filter_name'))
@@ -139,7 +137,7 @@ class StarSim(object):
             self.planet_impact_paramiso = None #initialize
 
             #read and check spotmap
-            pathspots = Path(__file__).parent / 'spotmap.dat' #path relatve to working directory 
+            pathspots = self.path / 'spotmap.dat' #path relatve to working directory 
             self.spot_map=np.loadtxt(pathspots)
 
             if self.spot_map.ndim == 1:
@@ -159,7 +157,7 @@ class StarSim(object):
             if self.ccf_template == 'model': #use phoenix models
                 pass
             elif self.ccf_template == 'mask': #use maske
-                pathmask = Path(__file__).parent / 'masks' / self.ccf_mask
+                pathmask = self.path / 'masks' / self.ccf_mask
                 try:
                     d = np.loadtxt(pathmask,unpack=True)
                     if len(d) == 2:
@@ -176,7 +174,7 @@ class StarSim(object):
 
 
                 if self.ccf_weight_lines:
-                    pathweight = Path(__file__).parent / 'masks' / self.path_weight_lines
+                    pathweight = self.path / 'masks' / self.path_weight_lines
                     try:
                         order, order_weight, order_wvi, order_wvf = np.loadtxt(pathweight,unpack=True)
                         self.wvm, self.fm = nbspectra.weight_mask(order_wvi,order_wvf,order_weight,self.wvm,self.fm)
@@ -368,7 +366,7 @@ class StarSim(object):
         if 'crx' in observables: #use HR templates in different wavelengths to compute chromatic index. Interpolate for temperatures and logg for different elements. Cut to desired wavelength.
             rvel=self.vsini*np.sin(theta)*np.sin(phi) #radial velocities of each grid
 
-            pathorders = Path(__file__).parent / 'orders_CRX' / self.orders_CRX_filename
+            pathorders = self.path / 'orders_CRX' / self.orders_CRX_filename
             # print('Reading the file in',pathorders,'containing the wavelengthranges of each echelle order,to compute the CRX')
             try:
                 orders, wvmins, wvmaxs = np.loadtxt(pathorders,unpack=True)
@@ -832,7 +830,7 @@ class StarSim(object):
         plt.annotate(s, xy=(0.0, 1.0),ha='left',va='top')
         plt.axis('off')
         plt.tight_layout()
-        ofilename = Path(__file__).parent / 'plots' / 'results_inversion.png'
+        ofilename = self.path / 'plots' / 'results_inversion.png'
         plt.savefig(ofilename,dpi=200)
             
 
@@ -887,7 +885,7 @@ class StarSim(object):
         lnLs = np.asarray(res,dtype='object')[:,1]
 
 
-        ofilename = Path(__file__).parent / 'results' / 'inversion_stats.npy'
+        ofilename = self.path / 'results' / 'inversion_stats.npy'
         np.save(ofilename,np.array([lnLs,best_maps],dtype='object'),allow_pickle=True)
 
         return best_maps, lnLs
@@ -1098,7 +1096,7 @@ class StarSim(object):
         best_maps = np.asarray(res,dtype='object')[:,1]
         lnLs = np.asarray(res,dtype='object')[:,2]
 
-        ofilename = Path(__file__).parent / 'results' / 'optimize_inversion_SA_stats.npy'
+        ofilename = self.path / 'results' / 'optimize_inversion_SA_stats.npy'
         np.save(ofilename,np.array([lnLs,p_used,best_maps],dtype='object'),allow_pickle=True)
 
 
@@ -1184,7 +1182,7 @@ class StarSim(object):
         plt.tight_layout()
         plt.subplots_adjust(hspace=0.0)
 
-        ofilename = Path(__file__).parent  / 'plots' / 'forward_results.png'
+        ofilename = self.path  / 'plots' / 'forward_results.png'
         plt.savefig(ofilename,dpi=200)
         #plt.show(block=True)
         plt.close()
@@ -1201,7 +1199,7 @@ class StarSim(object):
           plt.xlabel('MCMC step')
           plt.ylabel(self.lparamfit[ip])
 
-        ofilename = Path(__file__).parent  / 'plots' / 'MCMCoptimization_chains.png'
+        ofilename = self.path  / 'plots' / 'MCMCoptimization_chains.png'
         plt.savefig(ofilename,dpi=200)
         #plt.show(block=True)
         plt.close()
@@ -1223,7 +1221,7 @@ class StarSim(object):
           plt.xlim([left-(right-left)*0.2,right+(right-left)*0.2])
           plt.xlabel(self.lparamfit[ip])
         
-        ofilename = Path(__file__).parent  / 'plots' / 'MCMCoptimization_likelihoods.png'
+        ofilename = self.path  / 'plots' / 'MCMCoptimization_likelihoods.png'
         plt.savefig(ofilename,dpi=200)
         #plt.show(block=True)
         plt.close()
@@ -1232,7 +1230,7 @@ class StarSim(object):
         fig2, axes = plt.subplots(len(self.lparamfit),len(self.lparamfit), figsize=(2.3*len(self.lparamfit),2.3*len(self.lparamfit)))
         corner.corner(self.samples[-self.steps::,:,:].reshape((-1,len(self.lparamfit))),bins=20,plot_contours=False,fig=fig2,max_n_ticks=2,labels=self.lparamfit,label_kwargs={'fontsize':13},quantiles=(0.16,0.5,0.84),show_titles=True)
         
-        ofilename = Path(__file__).parent / 'plots' / 'MCMCoptimization_cornerplot.png'
+        ofilename = self.path / 'plots' / 'MCMCoptimization_cornerplot.png'
         plt.savefig(ofilename,dpi=200)
         #plt.show(block=True)
         plt.close()
@@ -1374,7 +1372,7 @@ class StarSim(object):
                 ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
                 l+=1
 
-        ofilename = Path(__file__).parent  / 'plots' / 'MCMCoptimization_timeseries_result.png'
+        ofilename = self.path  / 'plots' / 'MCMCoptimization_timeseries_result.png'
         plt.savefig(ofilename,dpi=200)
         plt.close()
         # plt.show(block=True)
@@ -1509,7 +1507,7 @@ class StarSim(object):
                     l+=1
 
 
-        ofilename = Path(__file__).parent  / 'plots' / 'MCMCoptimization_timeseries_best_result.png'
+        ofilename = self.path  / 'plots' / 'MCMCoptimization_timeseries_best_result.png'
         plt.savefig(ofilename,dpi=200)
         plt.close()
         # plt.show(block=True)
@@ -1641,7 +1639,7 @@ class StarSim(object):
 
 
 
-        ofilename = Path(__file__).parent  / 'plots' / 'inversion_timeseries_result.png'
+        ofilename = self.path  / 'plots' / 'inversion_timeseries_result.png'
         plt.savefig(ofilename,dpi=200)
         # plt.show(block=True)
         plt.close()
@@ -1697,7 +1695,7 @@ class StarSim(object):
             plt.plot(x,h,'k--')
             spotmap = ax.scatter(vec_grid[:,1],vec_grid[:,2], marker='o', c=Surface/len(best_maps), s=5.0, edgecolors='none', cmap=cm,vmax=(Surface.max()+0.1)/len(best_maps),vmin=-0.2*(Surface.max()+0.1)/len(best_maps))
             # cb = plt.colorbar(spotmap,ax=ax, fraction=0.035, pad=0.05, aspect=20)
-            ofilename = Path(__file__).parent  / 'plots' / 'inversion_spotmap_t_{:.4f}.png'.format(t)
+            ofilename = self.path  / 'plots' / 'inversion_spotmap_t_{:.4f}.png'.format(t)
             plt.savefig(ofilename,dpi=200)
             # plt.show()
             plt.close()
@@ -1743,7 +1741,7 @@ class StarSim(object):
         ax.set_xlabel("Longitude [deg]")
         ax.set_ylabel("Time [d]")
 
-        ofilename = Path(__file__).parent / 'plots' / 'active_map.png'
+        ofilename = self.path / 'plots' / 'active_map.png'
         plt.savefig(ofilename,dpi=200)
         # plt.show()
         plt.close()
@@ -1819,7 +1817,7 @@ class StarSim(object):
 
 
         #read the results
-        filename = Path(__file__).parent / 'results' / 'optimize_inversion_SA_stats.npy'
+        filename = self.path / 'results' / 'optimize_inversion_SA_stats.npy'
         res = np.load(filename,allow_pickle=True)
 
         lnLs=res[0]
@@ -1850,7 +1848,7 @@ class StarSim(object):
           # plt.xlim([left-(right-left)*0.2,right+(right-left)*0.2])
           plt.xlabel(self.lparamfit[ip])
         
-        ofilename = Path(__file__).parent / 'plots' / 'inversion_MCMCSA_likelihoods.png'
+        ofilename = self.path / 'plots' / 'inversion_MCMCSA_likelihoods.png'
         plt.savefig(ofilename,dpi=200)
         #plt.show(block=True)
         plt.close()
@@ -1864,7 +1862,7 @@ class StarSim(object):
         fig2, axes = plt.subplots(int(ndim),int(ndim), figsize=(2.3*int(ndim),2.3*int(ndim)))
         corner.corner(pcorner.T,bins=10,plot_contours=False,fig=fig2,max_n_ticks=2,labels=self.lparamfit,label_kwargs={'fontsize':13},quantiles=(0.16,0.5,0.84),show_titles=True)
         
-        ofilename = Path(__file__).parent / 'plots' / 'inversion_MCMCSA_cornerplot.png'
+        ofilename = self.path / 'plots' / 'inversion_MCMCSA_cornerplot.png'
         plt.savefig(ofilename,dpi=200)
         #plt.show(block=True)
         plt.close()
@@ -1927,7 +1925,7 @@ class StarSim(object):
         plt.annotate(s, xy=(0.0, 1.0),ha='left',va='top')
         plt.axis('off')
         plt.tight_layout()
-        ofilename = Path(__file__).parent / 'plots' / 'inversion_MCMCSA_results.png'
+        ofilename = self.path / 'plots' / 'inversion_MCMCSA_results.png'
         plt.savefig(ofilename,dpi=200)
         plt.close()
 
@@ -2072,7 +2070,7 @@ class StarSim(object):
             
 
 
-        ofilename = Path(__file__).parent  / 'plots' / 'inversion_timeseries_result.png'
+        ofilename = self.path  / 'plots' / 'inversion_timeseries_result.png'
         plt.savefig(ofilename,dpi=200)
         # plt.show(block=True)
         plt.close()

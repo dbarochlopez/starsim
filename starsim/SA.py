@@ -544,7 +544,6 @@ def inversion_SA(self,typ,only_inversion=False):
                 continue
 
             break
-        print('\n',alarm,'\n')
         lnLprop=lnposteriorSA(self,p_aux,ASbounds,ASlogpriors,typ,mode_lc_params,mode_rv_params) #log-likelihood of new position
         DeltalnL=lnLprop-lnLacc
         if np.isnan(DeltalnL): #To avoid getting stuck at -inf

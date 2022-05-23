@@ -20,15 +20,15 @@ setuptools.setup(
     ],                                      # Information to filter the project on PyPi website
     python_requires='>=3.6',                # Minimum version requirement of the package
     install_requires=[
-            'tqdm>=4.59.0',
+            'tqdm',
             'numpy',
-            'emcee>=3.1.0',
-            'corner>=2.2.1',
-            'configparser>=5.0.2',
-            'matplotlib>3.2.0',
-            'astropy>5.0',
-            'scipy>=1.7.1',
-            'numba>=0.53.1'
+            'emcee',
+            'corner',
+            'configparser',
+            'matplotlib',
+            'astropy',
+            'scipy',
+            'numba'
     ]                     # Install other dependencies if any
 #dependency_links=['http://github.com/user/repo/tarball/master#egg=package-1.0']
 

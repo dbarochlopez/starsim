@@ -72,14 +72,10 @@ def interpolate_Phoenix_mu_lc(self,temp,grav):
     import warnings
     warnings.filterwarnings("ignore")
 
-    # path1='Phoenix' #str(self.conf_file.get('files','phoenix_path')) #path to phoenix files relative to package
-    path = Path(__file__).parent / 'models' / 'Phoenix_mu' #path relatve to working directory 
+    path = self.path / 'models' / 'Phoenix_mu' #path relatve to working directory 
     files = [x.name for x in path.glob('lte*fits') if x.is_file()]
-    # path = str(Path(__file__).parent / 'models/Phoenix_mu') #path relatve to working directory 
-    # files=[f.split('/')[-1] for f in glob.glob(path+"/lte*")] #list of phoenix.fits models
     list_temp=np.unique([float(t[3:8]) for t in files])
     list_grav=np.unique([float(t[9:13]) for t in files])
-    # met=np.unique([float(t[14:17]) for t in f]) #for metalicities. Not yet enabled.
 
     #check if the parameters are inside the grid of models
     if grav<np.min(list_grav) or grav>np.max(list_grav):
@@ -156,7 +152,7 @@ def interpolate_Phoenix_mu_lc(self,temp,grav):
 
 def interpolate_filter(self):
 
-    path = Path(__file__).parent / 'models' / 'filters' / self.filter_name
+    path = self.path / 'models' / 'filters' / self.filter_name
 
     try:
         wv, filt = np.loadtxt(path,unpack=True)
@@ -326,7 +322,7 @@ def generate_rotating_photosphere_lc(self,Ngrid_in_ring,pare,amu,bph,bsp,bfc,flx
             sys.stdout.write("\rDate {0}. ff_ph={1:.3f}%. ff_sp={2:.3f}%. ff_fc={3:.3f}%. ff_pl={4:.3f}%. [{5}/{6}]%".format(t,filling_ph[k],filling_sp[k],filling_fc[k],filling_pl[k],k+1,len(self.obs_times)))
 
         if plot_map:
-            plot_spot_map(vec_grid,typ,self.inclination,t)
+            plot_spot_map_grid(self,vec_grid,typ,self.inclination,t)
 
 
     return self.obs_times, flux/flxph, filling_ph, filling_sp, filling_fc, filling_pl
@@ -359,14 +355,10 @@ def interpolate_Phoenix(self,temp,grav,plot=False):
     import warnings
     warnings.filterwarnings("ignore")
 
-    # path1='Phoenix' #str(self.conf_file.get('files','phoenix_path')) #path to phoenix files relative to package
-    path = Path(__file__).parent / 'models' / 'Phoenix' #path relatve to working directory 
+    path = self.path / 'models' / 'Phoenix' #path relatve to working directory 
     files = [x.name for x in path.glob('lte*fits') if x.is_file()]
-    # path = str(Path(__file__).parent / 'models/Phoenix') #path relatve to working directory 
-    # files=[f.split('/')[-1] for f in glob.glob(path+"/lte*")] #list of phoenix.fits models
     list_temp=np.unique([float(t[3:8]) for t in files])
     list_grav=np.unique([float(t[9:13]) for t in files])
-    # met=np.unique([float(t[14:17]) for t in f]) #for metalicities. Not yet enabled.
 
     #check if the parameters are inside the grid of models
     if grav<np.min(list_grav) or grav>np.max(list_grav):
@@ -749,7 +741,7 @@ def generate_rotating_photosphere_rv(self,Ngrid_in_ring,pare,amu,RV,ccf_ph_tot,c
             sys.stdout.write("\rDate {0}. ff_ph={1:.3f}%. ff_sp={2:.3f}%. ff_fc={3:.3f}%. ff_pl={4:.3f}%. [{5}/{6}]%".format(t,filling_ph[k],filling_sp[k],filling_fc[k],filling_pl[k],k+1,len(self.obs_times)))
 
         if plot_map:
-            plot_spot_map(vec_grid,typ,self.inclination,t)
+            plot_spot_map_grid(self,vec_grid,typ,self.inclination,t)
 
     return self.obs_times ,ccf_tot, filling_ph, filling_sp, filling_fc, filling_pl
 
@@ -942,8 +934,8 @@ def compute_planet_pos(self,t):
     pos=np.array([float(rhopl), float(thpl), self.planet_radius]) #rho, theta, and radii (in Rstar) of the planet
     return pos
 
-def plot_spot_map(vec_grid,typ,inc,time):
-    filename = Path(__file__).parent / 'plots' / 'map_t_{:.4f}.png'.format(time)
+def plot_spot_map_grid(self,vec_grid,typ,inc,time):
+    filename = self.path / 'plots' / 'map_t_{:.4f}.png'.format(time)
 
     x=np.linspace(-0.999,0.999,1000)
     h=np.sqrt((1-x**2)/(np.tan(inc)**2+1))
