@@ -5,7 +5,7 @@ Starsim can be downloaded from github, and installed using pip. Simply run:
 ```
 git clone https://github.com/dbarochlopez/starsim.git
 cd starsim
-pip install .
+pip install -e .
 ```
 
 Detailed instructions on how to install and run starsim can be found in the jupyter notebook tutorial.ipynb.
