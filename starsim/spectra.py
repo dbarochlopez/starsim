@@ -457,10 +457,11 @@ def bisector_fit(self,rv,ccf,plot_test=False,kind_interp='linear',integrated_bis
     
     if plot_test: #for debuggin purposes
         ys=np.linspace(0,1,1000)
-        xs = f(ys)
-        plt.plot(xs,ys)
+        # xs = f(ys)
+        # plt.plot(xs,ys)
         plt.plot(xbis,ybis,'.')
-        plt.plot(xnew,ynew)
+        plt.plot(rv,ccf)
+        # plt.plot(xnew,ynew)
         plt.show()
 
     return f
@@ -749,7 +750,7 @@ def generate_rotating_photosphere_rv(self,Ngrid_in_ring,pare,amu,RV,ccf_ph_tot,c
 
 
 # @profile
-def compute_ccf_params(self,rv,ccf,plot_test=False):
+def compute_ccf_params(self,rv,ccf,plot_test):
     '''Compute the parameters of the CCF and its bisector span (10-40% bottom minus 60-90% top)
     '''
     rvs=np.zeros(len(ccf)) #initialize
@@ -759,7 +760,6 @@ def compute_ccf_params(self,rv,ccf,plot_test=False):
 
     for i in range(len(ccf)): #loop for each ccf
         ccf[i] = ccf[i] - ccf[i].min() + 0.000001
-
         #Compute bisector and remove wings
         cutleft,cutright,xbis,ybis=nbspectra.speed_bisector_nb(rv,ccf[i]/ccf[i].max(),integrated_bis=True) #FAST
         BIS[i]=np.mean(xbis[np.array(ybis>=0.1) & np.array(ybis<=0.4)])-np.mean(xbis[np.array(ybis<=0.9) & np.array(ybis>=0.6)]) #FAST
@@ -777,15 +777,16 @@ def compute_ccf_params(self,rv,ccf,plot_test=False):
         contrast[i]=popt[0] #amplitude
         rvs[i]=popt[1] #mean
         fwhm[i]=2*m.sqrt(2*np.log(2))*np.abs(popt[2]) #fwhm relation to std
-
-        if plot_test:
+        
+        if plot_test: 
             plt.plot(rv,-(ccf[i]-np.min(ccf[i]))/np.max((ccf[i]-np.min(ccf[i]))),'.k')
-            plt.plot(rv[cutleft:cutright],-nbspectra.gaussian(rv[cutleft:cutright],popt[0],popt[1],popt[2],popt[3])/np.max(nbspectra.gaussian(rv[cutleft:cutright],popt[0],popt[1],popt[2],popt[3])),'r')
+            # plt.plot(rv[cutleft:cutright],-nbspectra.gaussian(rv[cutleft:cutright],popt[0],popt[1],popt[2],popt[3])/np.max(nbspectra.gaussian(rv[cutleft:cutright],popt[0],popt[1],popt[2],popt[3])),'r')
             plt.plot(xbis,-ybis,'b')
             plt.axvline(popt[1],ls=':',color='k')
             plt.axvline(np.mean(xbis[np.array(ybis>=0.0) & np.array(ybis<=0.4)]),ls=':',color='r')
             plt.axvline(np.mean(xbis[np.array(ybis<=0.9) & np.array(ybis>=0.6)]),ls=':',color='r')
             plt.show(block=True)
+    
 
     return rvs, contrast, fwhm, BIS
 

@@ -217,6 +217,29 @@ class StarSim(object):
             return conf_file_Object
 
 
+    def set_stellar_parameters(self,p):
+        """Set the stellar parameters that have been optimized.
+        """
+        self.temperature_photosphere = p[0]
+        self.spot_T_contrast = p[1]
+        self.facula_T_contrast = p[2]
+        self.facular_area_ratio = p[3]
+        self.convective_shift = p[4]
+        self.rotation_period = p[5]
+        self.inclination = np.deg2rad(90-p[6]) #axis inclinations in rad (inc=0 has the axis pointing up). The input was in deg defined as usual.
+        self.radius = p[7] #in Rsun
+        self.limb_darkening_q1 = p[8]
+        self.limb_darkening_q2 = p[9]
+        self.planet_period = p[10]
+        self.planet_transit_t0 = p[11]
+        self.planet_semi_amplitude = p[12]
+        self.planet_esinw = p[13]
+        self.planet_ecosw = p[14]
+        self.planet_radius = p[15]
+        self.planet_impact_param = p[16]
+        self.planet_spin_orbit_angle = p[17]*np.pi/180 #deg2rad    
+
+
     def compute_forward(self,observables=['lc'],t=None,inversion=False):
 
         if inversion==False:
@@ -229,8 +252,8 @@ class StarSim(object):
 
         self.obs_times = t
 
-        if self.simulation_mode == 'fast':
-            self.n_grid_rings = 5
+        # if self.simulation_mode == 'fast':
+        #     self.n_grid_rings = 5
 
         Ngrids, Ngrid_in_ring, centres, amu, rs, alphas, xs, ys, zs, are, pare = nbspectra.generate_grid_coordinates_nb(self.n_grid_rings)
 
@@ -840,7 +863,7 @@ class StarSim(object):
     #Optimize the stellar map. The spot map is optimized using Simulated annealing.
     def compute_inverseSA(self,N_inversions):
         N_spots = len(self.spot_map) #number of spots in spot_map
-        self.n_grid_rings = 5 
+        # self.n_grid_rings = 5 
         self.simulation_mode = 'fast' #must work in fast mode
 
         print('Computing',N_inversions,'inversions of',N_spots,'spots each.')
@@ -897,7 +920,7 @@ class StarSim(object):
         os.environ["OMP_NUM_THREADS"] = "1"
 
         N_spots = len(self.spot_map) #number of spots in spot_map
-        self.n_grid_rings = 5 
+        # self.n_grid_rings = 5 
         self.simulation_mode = 'fast' #must work in fast mode
 
         print('\nUsing data from the instruments:')
@@ -1113,7 +1136,7 @@ class StarSim(object):
 
 
     def load_data(self,filename=None,t=None,y=None,yerr=None,instrument=None,observable=None,wvmin=None,wvmax=None,filter_name=None,offset=None,fix_offset=False,jitter=0.0,fix_jitter=False):
-        
+        filename = self.path / filename
         if observable not in ['lc','rv','bis','fwhm','contrast','crx']:
             sys.exit('Observable not valid. Use one of the following: lc, rv, bis, fwhm, contrast or crx')
 
