@@ -119,8 +119,8 @@ class StarSim(object):
 
             #FUNCTIONS USED TO ADD BISECTORS TO THE PHOTOSPHERE AT DIFF ANGLES
             self.fun_coeff_bisectors_amu = spectra.cifist_coeff_interpolate
-            # self.fun_coeff_bisector_spots = spectra.dumusque_coeffs
-            # self.fun_coeff_bisector_faculae = spectra.dumusque_coeffs
+            self.fun_coeff_bisector_spots = spectra.dumusque_coeffs
+            self.fun_coeff_bisector_faculae = spectra.dumusque_coeffs
 
 
             #initialize other variables to store results
@@ -252,8 +252,6 @@ class StarSim(object):
 
         self.obs_times = t
 
-        # if self.simulation_mode == 'fast':
-        #     self.n_grid_rings = 5
 
         Ngrids, Ngrid_in_ring, centres, amu, rs, alphas, xs, ys, zs, are, pare = nbspectra.generate_grid_coordinates_nb(self.n_grid_rings)
 
@@ -1136,7 +1134,8 @@ class StarSim(object):
 
 
     def load_data(self,filename=None,t=None,y=None,yerr=None,instrument=None,observable=None,wvmin=None,wvmax=None,filter_name=None,offset=None,fix_offset=False,jitter=0.0,fix_jitter=False):
-        filename = self.path / filename
+    
+        
         if observable not in ['lc','rv','bis','fwhm','contrast','crx']:
             sys.exit('Observable not valid. Use one of the following: lc, rv, bis, fwhm, contrast or crx')
 
@@ -1155,12 +1154,15 @@ class StarSim(object):
         self.data[instrument][observable]['jitter']=jitter
         self.data[instrument][observable]['fix_offset']=fix_offset
         self.data[instrument][observable]['fix_jitter']=fix_jitter
-        try:
+
+        if filename != None:
+            filename = self.path / filename
             self.data[instrument][observable]['t'], self.data[instrument][observable]['y'], self.data[instrument][observable]['yerr'] = np.loadtxt(filename,unpack=True)              
-        except:
+        else:
             self.data[instrument][observable]['t'], self.data[instrument][observable]['y'], self.data[instrument][observable]['yerr'] = t, y, yerr
             if t is None:
                 sys.exit('Please provide a valid filename with the input data')
+
 
         if observable in ['lc','fwhm','contrast']:
             if offset == 0.0:
@@ -1400,140 +1402,6 @@ class StarSim(object):
         plt.close()
         # plt.show(block=True)
 
-    def plot_MCMCoptimization_best_results(self,t=None,fold=True):
-
-        num_obs=len(sum(self.observables,[]))
-
-        fig2, ax = plt.subplots(num_obs,1,figsize=(8,12))
-        if num_obs == 1:
-            ax= [ax]
-
-        #Variable p contains all the parameters available, fixed and optimized. P are the optimized parameters,vparam are the fixed params.
-        p=np.zeros(len(self.vparam))
-        # print(P)
-        ii=0
-        for i in range(len(self.fit)):
-          if self.fit[i]==0:
-            p[i]=self.vparam[i]
-          elif self.fit[i]==1:
-            p[i]=self.planet_impact_paramestparams[ii]
-            ii=ii+1
-
-
-
-        self.temperature_photosphere = p[0]
-        self.spot_T_contrast = p[1]
-        self.facula_T_contrast = p[2]
-        self.facular_area_ratio = p[3]
-        self.convective_shift = p[4]
-        self.rotation_period = p[5]
-        self.inclination = np.deg2rad(90-p[6]) #axis inclinations in rad (inc=0 has the axis pointing up). The input was in deg defined as usual.
-        self.radius = p[7] #in Rsun
-        self.limb_darkening_q1 = p[8]
-        self.limb_darkening_q2 = p[9]
-        self.planet_period = p[10]
-        self.planet_transit_t0 = p[11]
-        self.planet_semi_amplitude = p[12]
-        self.planet_esinw = p[13]
-        self.planet_ecosw = p[14]
-        self.planet_radius = p[15]
-        self.planet_impact_param = p[16]
-        self.planet_spin_orbit_angle = p[17]*np.pi/180 #deg2rad   
-                    
-        N_spots=len(self.spot_map)
-        for i in range(N_spots):
-            self.spot_map[i][0]=p[18+i]
-            self.spot_map[i][1]=p[18+N_spots+i]
-            self.spot_map[i][2]=p[18+2*N_spots+i]
-            self.spot_map[i][3]=p[18+3*N_spots+i]
-            self.spot_map[i][4]=p[18+4*N_spots+i]
-            self.spot_map[i][5]=p[18+5*N_spots+i]
-            self.spot_map[i][6]=p[18+6*N_spots+i]
-
-    
-        if fold is True:
-            phase=t/self.rotation_period%1*self.rotation_period
-            idxsrt=np.argsort(phase)
-
-        #Plot the data
-        l=0
-        for i in range(len(self.instruments)):
-            for j in self.observables[i]:
-                self.wavelength_lower_limit=self.data[self.instruments[i]]['wvmin']
-                self.wavelength_upper_limit=self.data[self.instruments[i]]['wvmax']
-                self.filter_name=self.data[self.instruments[i]]['filter']
-                self.compute_forward(observables=j,t=self.data[self.instruments[i]][j]['t'],inversion=True)
-
-                if self.data[self.instruments[i]][j]['offset_type']=='multiplicative':
-                    
-                    if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
-                        offset=1.0
-                        jitter=0.0
-
-                    elif self.data[self.instruments[i]][j]['fix_offset']:
-                        offset=1.0
-                        res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
-                        jitter=res.x[0]
-                        
-                    
-                    elif self.data[self.instruments[i]][j]['fix_jitter']:
-                        jitter=0.0
-                        res=optimize.minimize(nbspectra.fit_only_multiplicative_offset,np.mean(self.data[self.instruments[i]][j]['y'])/(np.mean(self.results[j])+0.0001), args=(self.results[j],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2)), method='Nelder-Mead')
-                        offset=res.x[0]
-
-                    else:
-                        res=optimize.minimize(nbspectra.fit_multiplicative_offset_jitter,[np.mean(self.data[self.instruments[i]][j]['y'])/(np.mean(self.results[j])+0.0001),2*np.mean(self.data[self.instruments[i]][j]['yerr'])], args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
-                        offset=res.x[0]
-                        jitter=res.x[1]
-
-                    self.compute_forward(observables=j,t=t,inversion=True)
-                    if fold is True:
-                        ax[l].plot(phase[idxsrt],self.results[j][idxsrt],'k',label='Offset={:.2f}, Jitter={:.4f}'.format(offset,jitter))
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t']/self.rotation_period%1*self.rotation_period,self.data[self.instruments[i]][j]['y']/offset,np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2)/offset,fmt='bo',ecolor='lightblue')
-                    else:
-                        ax[l].plot(t,self.results[j],'k',label='Offset={:.2f}, Jitter={:.4f}'.format(offset,jitter))
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y']/offset,np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2)/offset,fmt='bo',ecolor='lightblue')
-                    ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
-                    ax[l].legend()
-                    l+=1
-                
-                else: #linear offset
-
-                    if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
-                        offset=0.0
-                        jitter=0.0
-
-                    elif self.data[self.instruments[i]][j]['fix_offset']:
-                        offset=0.0
-                        res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y']-offset,self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
-                        jitter=res.x[0]
-                    
-                    elif self.data[self.instruments[i]][j]['fix_jitter']:
-                        jitter=0.0
-                        res=optimize.minimize(nbspectra.fit_only_linear_offset,np.mean(self.data[self.instruments[i]][j]['y'])-np.mean(self.results[j]), args=(self.results[j],self.data[self.instruments[i]][j]['y'],np.sqrt(jitter**2+self.data[self.instruments[i]][j]['yerr']**2)), method='Nelder-Mead')
-                        offset=res.x[0]
-
-                    else:
-                        res=optimize.minimize(nbspectra.fit_linear_offset_jitter,[np.mean(self.data[self.instruments[i]][j]['y'])-np.mean(self.results[j]),2*np.mean(self.data[self.instruments[i]][j]['yerr'])], args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
-                        offset=res.x[0]
-                        jitter=res.x[1]
-
-                    self.compute_forward(observables=j,t=t,inversion=True)
-                    if fold is True:
-                        ax[l].plot(phase[idxsrt],self.results[j][idxsrt],'k',label='Jitter={:.4f}'.format(jitter))
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t']/self.rotation_period%1*self.rotation_period,self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2),fmt='bo',ecolor='lightblue')
-                    else:
-                        ax[l].plot(t,self.results[j],'k',label='Jitter={:.4f}'.format(jitter))
-                        ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2),fmt='bo',ecolor='lightblue')
-                    ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
-                    ax[l].legend()
-                    l+=1
-
-
-        ofilename = self.path  / 'plots' / 'MCMCoptimization_timeseries_best_result.png'
-        plt.savefig(ofilename,dpi=200)
-        plt.close()
-        # plt.show(block=True)
 
 
     def plot_inversion_results(self,best_maps,lnLs,Npoints=200):
@@ -2094,6 +1962,132 @@ class StarSim(object):
 
 
         ofilename = self.path  / 'plots' / 'inversion_timeseries_result.png'
+        plt.savefig(ofilename,dpi=200)
+        # plt.show(block=True)
+        plt.close()
+
+
+    def plot_data_and_model(self,spot_map,stellar_params,Npoints=200):
+
+
+        #set spot map and stellar params
+        self.spot_map = spot_map
+        self.set_stellar_parameters(stellar_params)
+
+
+        self.instruments=[]
+        self.observables=[]
+        typ=[]
+        tmax=-3000000
+        tmin=3000000
+
+        for ins in self.data.keys():
+            self.instruments.append(ins)
+            o=[]
+            ty=[]
+            for obs in self.data[ins].keys():
+                if obs in ['lc']:
+                    o.append(obs)
+                    ty.append(0)
+                    if self.data[ins]['lc']['t'].min()<tmin: tmin=self.data[ins]['lc']['t'].min()
+                    if self.data[ins]['lc']['t'].max()>tmax: tmax=self.data[ins]['lc']['t'].max()
+                elif obs in ['rv','fwhm','bis','contrast']:
+                    o.append(obs)
+                    ty.append(1)
+                    if self.data[ins][obs]['t'].min()<tmin: tmin=self.data[ins][obs]['t'].min()
+                    if self.data[ins][obs]['t'].max()>tmax: tmax=self.data[ins][obs]['t'].max()
+                if obs in ['crx']:
+                    o.append(obs)
+                    ty.append(2)
+                    if self.data[ins]['crx']['t'].min()<tmin: tmin=self.data[ins]['crx']['t'].min()
+                    if self.data[ins]['crx']['t'].max()>tmax: tmax=self.data[ins]['crx']['t'].max()
+            self.observables.append(o)
+
+        num_obs=len(sum(self.observables,[]))
+
+        t=np.linspace(tmin,tmax,Npoints)
+
+        fig, ax = plt.subplots(num_obs,1,figsize=(12,12))
+        if num_obs == 1:
+            ax= [ax]
+
+
+
+
+
+                    
+        #Plot the data
+        l=0
+        for i in range(len(self.instruments)):
+            for j in self.observables[i]:
+                self.wavelength_lower_limit=self.data[self.instruments[i]]['wvmin']
+                self.wavelength_upper_limit=self.data[self.instruments[i]]['wvmax']
+                self.filter_name=self.data[self.instruments[i]]['filter']
+                self.compute_forward(observables=j,t=self.data[self.instruments[i]][j]['t'],inversion=True)
+
+                if self.data[self.instruments[i]][j]['offset_type']=='multiplicative':
+                    
+                    if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
+                        offset=1.0
+                        jitter=0.0
+
+                    elif self.data[self.instruments[i]][j]['fix_offset']:
+                        offset=1.0
+                        res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
+                        jitter=res.x[0]                           
+                    
+                    elif self.data[self.instruments[i]][j]['fix_jitter']:
+                        jitter=0.0
+                        res=optimize.minimize(nbspectra.fit_only_multiplicative_offset,np.mean(self.data[self.instruments[i]][j]['y'])/(np.mean(self.results[j])+0.0001), args=(self.results[j],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2)), method='Nelder-Mead')
+                        offset=res.x[0]
+
+                    else:
+                        res=optimize.minimize(nbspectra.fit_multiplicative_offset_jitter,[np.mean(self.data[self.instruments[i]][j]['y'])/(np.mean(self.results[j])+0.0001),2*np.mean(self.data[self.instruments[i]][j]['yerr'])], args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
+                        offset=res.x[0]
+                        jitter=res.x[1]
+
+                    self.compute_forward(observables=j,t=t,inversion=True)
+                    
+                    ax[l].plot(t,self.results[j]*offset,'k',zorder=11,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))
+                    ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2),fmt='bo',ecolor='lightblue',zorder=10)                        
+                    ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
+                    ax[l].legend()
+                    
+
+                else: #linear offset
+
+                    if (self.data[self.instruments[i]][j]['fix_jitter'] and self.data[self.instruments[i]][j]['fix_offset']):
+                        offset=0.0
+                        jitter=0.0
+
+                    elif self.data[self.instruments[i]][j]['fix_offset']:
+                        offset=0.0
+                        res=optimize.minimize(nbspectra.fit_only_jitter,2*np.mean(self.data[self.instruments[i]][j]['yerr']), args=(self.results[j],self.data[self.instruments[i]][j]['y']-offset,self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
+                        jitter=res.x[0]
+                    
+                    elif self.data[self.instruments[i]][j]['fix_jitter']:
+                        jitter=0.0
+                        res=optimize.minimize(nbspectra.fit_only_linear_offset,np.mean(self.data[self.instruments[i]][j]['y'])-np.mean(self.results[j]), args=(self.results[j],self.data[self.instruments[i]][j]['y'],np.sqrt(jitter**2+self.data[self.instruments[i]][j]['yerr']**2)), method='Nelder-Mead')
+                        offset=res.x[0]
+
+                    else:
+                        res=optimize.minimize(nbspectra.fit_linear_offset_jitter,[np.mean(self.data[self.instruments[i]][j]['y'])-np.mean(self.results[j]),2*np.mean(self.data[self.instruments[i]][j]['yerr'])], args=(self.results[j],self.data[self.instruments[i]][j]['y'],self.data[self.instruments[i]][j]['yerr']), method='Nelder-Mead')
+                        offset=res.x[0]
+                        jitter=res.x[1]
+
+                    self.compute_forward(observables=j,t=t,inversion=True)
+
+                    ax[l].plot(t,self.results[j]+offset,'k',zorder=11,label='Offset={:.5f}, Jitter={:.5f}'.format(offset,jitter))
+                    ax[l].errorbar(self.data[self.instruments[i]][j]['t'],self.data[self.instruments[i]][j]['y'],np.sqrt(self.data[self.instruments[i]][j]['yerr']**2+jitter**2),fmt='bo',ecolor='lightblue',zorder=10)
+                    ax[l].set_ylabel('{}_{}'.format(self.instruments[i],j))
+                    ax[l].legend()
+
+                l+=1
+
+
+
+
+        ofilename = self.path  / 'plots' / 'data_and_model.png'
         plt.savefig(ofilename,dpi=200)
         # plt.show(block=True)
         plt.close()

@@ -270,13 +270,13 @@ def speed_bisector_nb(rv,ccf,integrated_bis):
     # if not integrated_bis: #cut the CCF at the minimum of the wings only for reference CCF, if not there are errors.
     for i in range(len(ynew)):
         if xnew[i]>maxrv:
-            if ynew[i]>ynew[i-1]:
+            if ynew[i]>ynew[i-1] and ynew[i]<0.8*maxccf:
                 cutright=i
                 break
 
     for i in range(len(ynew)):
         if xnew[-1-i]<maxrv:
-            if ynew[-1-i]>ynew[-i]:
+            if ynew[-1-i]>ynew[-i] and ynew[i]<0.8*maxccf:
                 cutleft=len(ynew)-i
                 break
 
@@ -286,7 +286,11 @@ def speed_bisector_nb(rv,ccf,integrated_bis):
     minright=np.min(ynew[xnew>maxrv])
     minleft=np.min(ynew[xnew<maxrv])
     minccf=np.max(np.array([minright,minleft]))
-    ybis=np.linspace(minccf+0.01*(maxccf-minccf),0.999*maxccf,50) #from 5% to maximum
+    
+    if integrated_bis:
+        ybis=np.linspace(minccf+0.1*(maxccf-minccf),0.99*maxccf,50) #from 5% to maximum
+    else:
+        ybis=np.linspace(minccf+0.1*(maxccf-minccf),0.999*maxccf,50) #from 5% to maximum
     xbis=np.zeros(len(ybis))
 
 
@@ -358,7 +362,7 @@ def compute_spot_position(t,spot_map,ref_time,Prot,diff_rot,Revo,Q):
                 rad=0.0
         elif Revo == 'quadratic':
             if t>=tini and t<=tfin:
-                rad=-4*Rcoef[0]/(dur*(1-2*tini))*(t-tini)*(t-tini-dur)
+                rad=-4*Rcoef[0]*(t-tini)*(t-tini-dur)/dur**2
             else:
                 rad=0.0
         
@@ -440,23 +444,23 @@ def true_anomaly(x,period,ecc,tperi):
 @nb.njit(cache=True,error_model='numpy')
 def generate_grid_coordinates_nb(N):
 
-    Nt=2*N-1 #N is number og concentric rings. Nt is counting them two times minus the center one.
+    Nt=2*N-1 #N is number of concentric rings. Nt is counting them two times minus the center one.
     width=180.0/(2*N-1) #width of one grid element.
 
-    centres=np.append(0,np.linspace(width,90-width/2,N-1)) #latitudes of the concentric grids
-    anglesout=np.linspace(0,360-width,2*Nt) #longitudes of the grid in the equator. The pole ofthe grid faces the observer.
+    centres=np.append(0,np.linspace(width,90-width/2,N-1)) #colatitudes of the concentric grids. The pole of the grid faces the observer.
+    anglesout=np.linspace(0,360-width,2*Nt) #longitudes of the grid edges of the most external grid. This grids fix the area of the grids in other rings.
     
     radi=np.sin(np.pi*centres/180) #projected polar radius of the ring.
     amu=np.cos(np.pi*centres/180) #amus
 
-    ts=[0.0] #central grid
-    alphas=[0.0] #central grid
+    ts=[0.0] #central grid radius
+    alphas=[0.0] #central grid angle
 
-    area=[2.0*np.pi*(1.0-np.cos(width*np.pi/360.0))] #area central element
+    area=[2.0*np.pi*(1.0-np.cos(width*np.pi/360.0))] #area of spherical cap (only for the central element)
     parea=[np.pi*np.sin(width*np.pi/360.0)**2]
 
     Ngrid_in_ring=[1]
-
+    
     for i in range(1,len(amu)): #for each ring except firs
         Nang=int(round(len(anglesout)*(radi[i]))) #Number of longitudes to have grids of same width
         w=360/Nang #width i angles
@@ -1114,6 +1118,7 @@ def generate_rotating_photosphere_fast_lc(obs_times,Ngrid_in_ring,acd,amu,pare,f
 
 
 
+
             if Q>0.0:
 
                 pare_facula= pare_fac - pare_spot
@@ -1254,7 +1259,7 @@ def generate_rotating_photosphere_fast_lc(obs_times,Ngrid_in_ring,acd,amu,pare,f
         filling_sp[k]=100*filling_sp[k]/m.pi
         filling_fc[k]=100*filling_fc[k]/m.pi
         filling_pl[k]=100*filling_pl[k]/m.pi    
-    
+
     return obs_times, flux/flxph, filling_ph, filling_sp, filling_fc, filling_pl
 
 
@@ -1500,7 +1505,7 @@ def generate_rotating_photosphere_fast_rv(obs_times,Ngrid_in_ring,acd,amu,pare,r
 
 
             rv_phsp = rv_ph + rvel_spot + fun_cifist(ccf_ph,amu_spot)*1000.0*CB
-            rv_spph = rv_sp + rvel_spot + fun_spot_bisect(ccf_sp)*amu_spot*1000.0*CB
+            rv_spph = rv_sp + rvel_spot + fun_spot_bisect(ccf_sp)*1000.0*CB
             ccf_phsp=interpolation_nb(rv,rv_phsp,ccf_ph,ccf_ph[0],ccf_ph[-1]) #still normalized ccf.
             ccf_spph=interpolation_nb(rv,rv_spph,ccf_sp,ccf_sp[0],ccf_sp[-1]) #still normalized ccf.
             #Compute RVshift, shift CCF, and iterpolate the CCF values. 

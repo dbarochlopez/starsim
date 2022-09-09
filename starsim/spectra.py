@@ -366,8 +366,8 @@ def interpolate_Phoenix(self,temp,grav,plot=False):
         Phoenix models covering the desired logg from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
 
     if temp<np.min(list_temp) or temp>np.max(list_temp):
-        sys.exit('Error in the interpolation of Phoenix models. The desired logg is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix models covering the desired logg from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
+        sys.exit('Error in the interpolation of Phoenix models. The desired T is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix models covering the desired T from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
         
 
 
@@ -461,7 +461,7 @@ def bisector_fit(self,rv,ccf,plot_test=False,kind_interp='linear',integrated_bis
         # plt.plot(xs,ys)
         plt.plot(xbis,ybis,'.')
         plt.plot(rv,ccf)
-        # plt.plot(xnew,ynew)
+        plt.plot(f(ccf),ccf)
         plt.show()
 
     return f
@@ -607,7 +607,7 @@ def compute_immaculate_spot_rv(self,Ngrid_in_ring,acd,amu,pare,flsk,rv_sp,rv,ccf
 
         flux_pix=(sccf[i]/Ngrid_in_ring[i])/flxph #brightness of 1 pixel normalized to total flux
 
-        rvs_ring[i,:]= rv_sp + fun_dumusque*amu[i]*1000*self.convective_shift #add solar spot bisector (in km/s, *1000 to convert to m/s). Multiply by amu and multiply it by a CS factor.
+        rvs_ring[i,:]= rv_sp + fun_dumusque(ccf)*1000*self.convective_shift #add solar spot bisector (in km/s, *1000 to convert to m/s). Multiply it by a CS factor.
         ccf_ring[i,:]=ccf*flux_pix #CCF values normalized to the contribution to the total flux of 1 pixel of this ring
         #Fer lo dels bisectors
 
@@ -652,11 +652,11 @@ def compute_immaculate_facula_rv(self,Ngrid_in_ring,acd,amu,pare,flpk,rv_fc,rv,c
 
         # fun_cifist = self.fun_coeff_bisectors_amu(amu[i])
 
-        # fun_dumusque = self.fun_coeff_bisector_faculae(amu[i])
+        fun_dumusque = self.fun_coeff_bisector_faculae(amu[i])
  
         flux_pix=(sccf[i]/Ngrid_in_ring[i])/flxph #brightness of 1 pixel normalized to total flux
 
-        rvs_ring[i,:]= rv_fc + fun_dumusque*amu[i]*1000*self.convective_shift #Same as spot. 
+        rvs_ring[i,:]= rv_fc + fun_dumusque(ccf)*1000*self.convective_shift #Same as spot. 
         ccf_ring[i,:]=ccf*flux_pix #CCF values normalized to the contribution to the total flux of 1 pixel of this ring
         #Fer lo dels bisectors
 
@@ -779,12 +779,8 @@ def compute_ccf_params(self,rv,ccf,plot_test):
         fwhm[i]=2*m.sqrt(2*np.log(2))*np.abs(popt[2]) #fwhm relation to std
         
         if plot_test: 
-            plt.plot(rv,-(ccf[i]-np.min(ccf[i]))/np.max((ccf[i]-np.min(ccf[i]))),'.k')
-            # plt.plot(rv[cutleft:cutright],-nbspectra.gaussian(rv[cutleft:cutright],popt[0],popt[1],popt[2],popt[3])/np.max(nbspectra.gaussian(rv[cutleft:cutright],popt[0],popt[1],popt[2],popt[3])),'r')
-            plt.plot(xbis,-ybis,'b')
-            plt.axvline(popt[1],ls=':',color='k')
-            plt.axvline(np.mean(xbis[np.array(ybis>=0.0) & np.array(ybis<=0.4)]),ls=':',color='r')
-            plt.axvline(np.mean(xbis[np.array(ybis<=0.9) & np.array(ybis>=0.6)]),ls=':',color='r')
+            # plt.plot(rv,1-ccf[i]/ccf[i].max())
+            plt.plot(xbis,1-ybis,'b')
             plt.show(block=True)
     
 
@@ -891,7 +887,11 @@ def compute_spot_position(self,t):
                 rad=Rcoef[0]+(t-tini)*(Rcoef[1]-Rcoef[0])/dur
             else:
                 rad=0.0
-
+        elif Revo == 'quadratic':
+            if t>=tini and t<=tfin:
+                rad=-4*Rcoef[0]*(t-tini)*(t-tini-dur)/dur**2
+            else:
+                rad=0.0
 
         else:
             sys.exit('Spot evolution law not implemented yet')
