@@ -79,12 +79,12 @@ def interpolate_Phoenix_mu_lc(self,temp,grav):
 
     #check if the parameters are inside the grid of models
     if grav<np.min(list_grav) or grav>np.max(list_grav):
-        sys.exit('Error in the interpolation of Phoenix_mu models. The desired logg is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix intensity models covering the desired logg from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73')
+        sys.exit('Error in the interpolation of Phoenix_mu models. The desired logg ({}) is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix intensity models covering the desired logg from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73'.format(grav))
 
     if temp<np.min(list_temp) or temp>np.max(list_temp):
-        sys.exit('Error in the interpolation of Phoenix_mu models. The desired T is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix intensity models covering the desired T from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73')
+        sys.exit('Error in the interpolation of Phoenix_mu models. The desired T ({}) is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix intensity models covering the desired T from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73'.format(temp))
         
 
 
@@ -362,12 +362,12 @@ def interpolate_Phoenix(self,temp,grav,plot=False):
 
     #check if the parameters are inside the grid of models
     if grav<np.min(list_grav) or grav>np.max(list_grav):
-        sys.exit('Error in the interpolation of Phoenix models. The desired logg is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix models covering the desired logg from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
+        sys.exit('Error in the interpolation of Phoenix models. The desired logg ({}) is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix models covering the desired logg from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/'.format(grav))
 
     if temp<np.min(list_temp) or temp>np.max(list_temp):
-        sys.exit('Error in the interpolation of Phoenix models. The desired T is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix models covering the desired T from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
+        sys.exit('Error in the interpolation of Phoenix models. The desired T ({}) is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix models covering the desired T from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/'.format(temp))
         
 
 

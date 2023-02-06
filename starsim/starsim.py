@@ -1143,7 +1143,7 @@ class StarSim(object):
             print('Wavelength range of the instrument not specified. Using the values in the file starsim.conf, ',self.wavelength_lower_limit,'and ',self.wavelength_upper_limit)
 
         if observable=='lc' and filter_name== None:
-            print('Filter file neam not specified. Using the values in ',self.filter_name,'. Filters can be retrieved from http://svo2.cab.inta-csic.es/svo/theory/fps3/')
+            print('Filter file name not specified. Using the values in ',self.filter_name,'. Filters can be retrieved from http://svo2.cab.inta-csic.es/svo/theory/fps3/')
             filter_name = self.filter_name
 
         self.data[instrument][observable]={}
@@ -1164,7 +1164,7 @@ class StarSim(object):
                 sys.exit('Please provide a valid filename with the input data')
 
 
-        if observable in ['lc','fwhm','contrast']:
+        if observable in ['lc','fwhm','bis']:
             if offset == 0.0:
                 sys.exit("Error in the input offset of the observable:",observable,". It is a multiplicative offset, can't be 0")
             if offset is None:

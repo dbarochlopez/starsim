@@ -580,7 +580,6 @@ def loop_generate_rotating_nb(N,Ngrid_in_ring,pare,amu,spot_pos,vec_grid,vec_spo
             elif dist<planet_pos[2]-width2/2: apl=1.0
             else: apl=-(dist-planet_pos[2]-width2/2)/width2
 
-    
     if afc>1.0:
         afc=1.0
 
@@ -588,11 +587,19 @@ def loop_generate_rotating_nb(N,Ngrid_in_ring,pare,amu,spot_pos,vec_grid,vec_spo
         asp=1.0
         afc=0.0
 
+    if apl>1.0:
+        apl=1.0
+        asp=0.0
+        afc=0.0
+
+    if afc + asp > 1.0:
+        afc = 1.0 - asp
+
     if apl>0.0:
         asp=asp*(1-apl)
         afc=afc*(1-apl)
 
-    aph=1-asp-afc-apl           
+    aph=1-asp-afc-apl         
 
     #add the corresponding ccf to the total CCF
     ccf_tot = ccf_tot  - (1-aph)*ccf_ph[iteration] + asp*ccf_sp[iteration] + afc*ccf_fc[iteration] 
@@ -697,11 +704,19 @@ def loop_generate_rotating_nb(N,Ngrid_in_ring,pare,amu,spot_pos,vec_grid,vec_spo
                 asp=1.0
                 afc=0.0
 
+            if apl>1.0:
+                apl=1.0
+                asp=0.0
+                afc=0.0
+
+            if afc + asp > 1.0:
+                afc = 1.0 - asp
+
             if apl>0.0:
                 asp=asp*(1-apl)
                 afc=afc*(1-apl)
 
-            aph=1-asp-afc-apl           
+            aph=1-asp-afc-apl          
   
             #add the corresponding ccf to the total CCF
             ccf_tot = ccf_tot  - (1-aph)*ccf_ph[iteration] + asp*ccf_sp[iteration] + afc*ccf_fc[iteration] 
@@ -804,6 +819,14 @@ def loop_generate_rotating_lc_nb(N,Ngrid_in_ring,pare,amu,spot_pos,vec_grid,vec_
     if asp>1.0:
         asp=1.0
         afc=0.0
+
+    if apl>1.0:
+        apl=1.0
+        asp=0.0
+        afc=0.0
+
+    if afc + asp > 1.0:
+        afc = 1.0 - asp
 
     if apl>0.0:
         asp=asp*(1-apl)
@@ -914,12 +937,20 @@ def loop_generate_rotating_lc_nb(N,Ngrid_in_ring,pare,amu,spot_pos,vec_grid,vec_
                 asp=1.0
                 afc=0.0
 
+            if apl>1.0:
+                apl=1.0
+                asp=0.0
+                afc=0.0
+
+            if afc + asp > 1.0:
+                afc = 1.0 - asp
+
             if apl>0.0:
                 asp=asp*(1-apl)
                 afc=afc*(1-apl)
 
-            aph=1-asp-afc-apl           
-  
+            aph=1-asp-afc-apl 
+          
             #add the corresponding ccf to the total CCF
             flux = flux - (1-aph)*bph[i]+asp*bsp[i]+bfc[i]*afc
 
