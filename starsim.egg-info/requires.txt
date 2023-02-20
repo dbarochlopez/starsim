@@ -1,9 +1,9 @@
-tqdm
-numpy
-emcee
-corner
-configparser
-matplotlib
 astropy
-scipy
+configparser
+corner
+emcee
+matplotlib
 numba
+numpy
+scipy
+tqdm

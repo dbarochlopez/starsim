@@ -366,8 +366,8 @@ def interpolate_Phoenix(self,temp,grav):
         Phoenix models covering the desired logg from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
 
     if temp<np.min(list_temp) or temp>np.max(list_temp):
-        sys.exit('Error in the interpolation of Phoenix models. The desired T is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix models covering the desired T from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
+        sys.exit('Error in the interpolation of Phoenix models. The desired T={} is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix models covering the desired T from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/'.format(temp))
         
 
 

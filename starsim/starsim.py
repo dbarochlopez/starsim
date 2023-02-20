@@ -55,6 +55,8 @@ class StarSim(object):
             self.facular_area_ratio = float(self.conf_file.get('star','facular_area_ratio'))
             self.differential_rotation = float(self.conf_file.get('star','differential_rotation'))
             #rv
+            self.instrument_resolution = float(self.conf_file.get('rv','instrument_resolution'))
+            self.instrument_sampling_size = float(self.conf_file.get('rv','instrument_sampling_size'))
             self.ccf_template = str(self.conf_file.get('rv','ccf_template'))
             self.ccf_mask = str(self.conf_file.get('rv','ccf_mask'))
             self.ccf_weight_lines = int(self.conf_file.get('rv','ccf_weight_lines'))
@@ -294,18 +296,21 @@ class StarSim(object):
 
 
         if 'rv' in observables or 'bis' in observables or 'fwhm' in observables or 'contrast' in observables: #use HR templates. Interpolate for temperatures and logg for different elements. Cut to desired wavelength.
-            rvel=self.vsini*np.sin(theta)*np.sin(phi)#*np.cos(self.inclination) #radial velocities of each grid
+            
+            rotation_period_lat = 1/(1/self.rotation_period + (self.differential_rotation*np.sin(np.pi/2 - theta)**2)/360) #Add diff rotation
+            vsini = 1000*2*np.pi*(self.radius*696342)*np.cos(self.inclination)/(rotation_period_lat*86400)
+            rvel=vsini*np.sin(theta)*np.sin(phi) #radial velocities of each grid. Inclination already in vsini
 
-            wv_rv, flnp_rv, flp_rv =spectra.interpolate_Phoenix(self,self.temperature_photosphere,self.logg) #returns norm spectra and no normalized, interpolated at T and logg
-            wv_rv, flns_rv, fls_rv =spectra.interpolate_Phoenix(self,self.temperature_spot,self.logg)
+            wv_rv, flnp_rv  = spectra.interpolate_Phoenix(self,self.temperature_photosphere,self.logg) #returns norm spectra and no normalized, interpolated at T and logg
+            wv_rv, flns_rv  = spectra.interpolate_Phoenix(self,self.temperature_spot,self.logg)
             if self.facular_area_ratio>0:
-                wv_rv, flnf_rv, flf_rv =spectra.interpolate_Phoenix(self,self.temperature_facula,self.logg)
+                wv_rv, flnf_rv  = spectra.interpolate_Phoenix(self,self.temperature_facula,self.logg)
             spec_ref = flnp_rv #reference spectrum to compute CCF. Normalized
 
             #Interpolate also Phoenix intensity models to the Phoenix wavelength. 
             # if self.use_phoenix_limb_darkening: 
-            acd, wv_rv_LR, flpk_rv =spectra.interpolate_Phoenix_mu_lc(self,self.temperature_photosphere,self.logg) #acd is the angles at which the model is computed. 
-            acd, wv_rv_LR, flsk_rv =spectra.interpolate_Phoenix_mu_lc(self,self.temperature_spot,self.logg)
+            acd, wv_rv_LR, flpk_rv = spectra.interpolate_Phoenix_mu_lc(self,self.temperature_photosphere,self.logg) #acd is the angles at which the model is computed. 
+            acd, wv_rv_LR, flsk_rv = spectra.interpolate_Phoenix_mu_lc(self,self.temperature_spot,self.logg)
 
             #Compute the CCF of the spectrum of each element againts the reference template (photosphere)
             rv = np.arange(-self.ccf_rv_range,self.ccf_rv_range+self.ccf_rv_step,self.ccf_rv_step)
@@ -403,10 +408,10 @@ class StarSim(object):
 
                 self.wavelength_lower_limit, self.wavelength_upper_limit = wvmins[i], wvmaxs[i]
 
-                wv_rv, flnp_rv, flp_rv =spectra.interpolate_Phoenix(self,self.temperature_photosphere,self.logg) #returns norm spectra and no normalized, interpolated at T and logg
-                wv_rv, flns_rv, fls_rv =spectra.interpolate_Phoenix(self,self.temperature_spot,self.logg)
+                wv_rv, flnp_rv = spectra.interpolate_Phoenix(self,self.temperature_photosphere,self.logg) #returns norm spectra and no normalized, interpolated at T and logg
+                wv_rv, flns_rv = spectra.interpolate_Phoenix(self,self.temperature_spot,self.logg)
                 if self.facular_area_ratio>0:
-                    wv_rv, flnf_rv, flf_rv =spectra.interpolate_Phoenix(self,self.temperature_facula,self.logg)
+                    wv_rv, flnf_rv = spectra.interpolate_Phoenix(self,self.temperature_facula,self.logg)
                 spec_ref = flnp_rv #reference spectrum to compute CCF. Normalized
 
 
