@@ -342,7 +342,7 @@ def generate_rotating_photosphere_lc(self,Ngrid_in_ring,pare,amu,bph,bsp,bfc,flx
 ########################################################################################
 
 
-def interpolate_Phoenix(self,temp,grav,plot=False):
+def interpolate_Phoenix(self,temp,grav):
     """Cut and interpolate phoenix models at the desired wavelengths, temperatures, logg and metalicity(not yet). For spectroscopy.
     Inputs
     temp: temperature of the model; 
@@ -434,15 +434,12 @@ def interpolate_Phoenix(self,temp,grav,plot=False):
     # #divide by 6th deg polynomial
     coeff = np.polyfit(x_bin, y_bin, 6)
     flux_norm = flux / np.poly1d(coeff)(wv)
-    #plots to check normalization. For debugging purposes.
-    if plot:
-        plt.plot(wv,flux)
-        plt.plot(x_bin,y_bin,'ok')
-        plt.plot(wv,np.poly1d(coeff)(wv))
-        plt.show()
-        plt.close()
 
-    interpolated_spectra = np.array([wv,flux_norm,flux])
+    #Degrade resolution of the spectra to compensate for the resolution of the instrument
+    R = self.instrument_resolution
+    sampling = self.instrument_sampling_size
+    
+    interpolated_spectra = np.array([wv,flux_norm])
 
     return interpolated_spectra
 
@@ -872,8 +869,10 @@ def compute_spot_position(self,t):
         longi = self.spot_map[i][3] #longitude
         Rcoef = self.spot_map[i][4::] #coefficients for the evolution od the radius. Depends on the desired law.
 
+        rotation_period_lat = 1/(1/self.rotation_period + (self.differential_rotation*np.sin(np.deg2rad(lat))**2)/360)
+
         #update longitude adding diff rotation
-        pht = longi + (t-self.reference_time)/self.rotation_period%1*360 + (t-self.reference_time)*self.differential_rotation*(1.698*np.sin(np.deg2rad(lat))**2+2.346*np.sin(np.deg2rad(lat))**4)
+        pht = longi + (t-self.reference_time)/rotation_period_lat%1*360 
         phsr = pht%360 #make the phase between 0 and 360. 
 
         if self.spots_evo_law == 'constant':
