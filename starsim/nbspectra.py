@@ -76,6 +76,7 @@ def gaussian2(x, amplitude, mean, stddev,C):
     return C + amplitude * np.exp(-(x-mean)**2/(2*stddev**2))
 
 
+
 @nb.njit(cache=True,error_model='numpy')
 def normalize_spectra_nb(bins,wavelength,flux):
 
@@ -132,7 +133,7 @@ def cross_correlation_nb(rv,wv,flx,wv_ref,flx_ref):
 
 
 @nb.njit(cache=True,error_model='numpy')
-def cross_correlation_mask(rv,wv,f,wvm,fm):
+def cross_correlation_mask(rv,wv,f,wvm,fm,R,step):
     ccf = np.zeros(len(rv))
     lenm = len(wvm)
     wvmin=wv[0]
@@ -143,52 +144,7 @@ def cross_correlation_mask(rv,wv,f,wvm,fm):
         for j in range(lenm):
             #find wavelengths right and left of the line.
             wvline=wvshift[j]
-
-            if wvline<3000.0:
-                idxlf = int((wvline-wvmin)/0.1)
-
-            elif wvline<4999.986:
-                if wvmin<3000.0:
-                    idxlf = np.round(int((3000.0-wvmin)/0.1)) + int((wvline-3000.0)/0.006) 
-                else:
-                    idxlf = int((wvline-wvmin)/0.006)
-
-            elif wvline<5000.0:
-                if wvmin<3000.0:
-                    idxlf = np.round(int((3000.0-wvmin)/0.1)) + int((4999.986-3000.0)/0.006) + 1
-                else:
-                    idxlf = int((4999.986-wvmin)/0.006) + 1
-
-            elif wvline<10000.0:
-                if wvmin<3000.0:
-                    idxlf = np.round(int((3000.0-wvmin)/0.1)) + int((4999.986-3000.0)/0.006) + 1 + int((wvline-5000.0)/0.01)
-                elif wvmin<4999.986:
-                    idxlf = int((4999.986-wvmin)/0.006) + 1 + int((wvline-5000.0)/0.01)
-                else:
-                    idxlf = int((wvline-wvmin)/0.01) 
-
-            elif wvline<15000.0:
-                if wvmin<3000.0:
-                    idxlf = np.round(int((3000.0-wvmin)/0.1)) + int((4999.986-3000.0)/0.006) + 1 + int((10000.0-5000.0)/0.01) + int((wvline-10000.0)/0.02)
-                elif wvmin<4999.986:
-                    idxlf = int((4999.986-wvmin)/0.006) + 1 + int((10000-5000.0)/0.01) + int((wvline-10000.0)/0.02)
-                elif wvmin<10000.0:
-                    idxlf = int((10000.0-wvmin)/0.01) + int((wvline-10000.0)/0.02)
-                else:
-                    idxlf = int((wvline-wvmin)/0.02)
-
-            else:
-                if wvmin<3000.0:
-                    idxlf = np.round(int((3000.0-wvmin)/0.1)) + int((4999.986-3000.0)/0.006) + 1 + int((10000.0-5000.0)/0.01) + int((15000.0-10000.0)/0.02) + int((wvline-15000.0)/0.03)
-                elif wvmin<4999.986:
-                    idxlf = int((4999.986-wvmin)/0.006) + 1 + int((10000-5000.0)/0.01) + int((15000-10000.0)/0.02) + int((wvline-15000.0)/0.03)
-                elif wvmin<10000.0:
-                    idxlf = int((10000.0-wvmin)/0.01) + int((15000-10000.0)/0.02) + int((wvline-15000.0)/0.03)
-                elif wvmin<15000.0:
-                    idxlf = int((15000-wvmin)/0.02) + int((wvline-15000.0)/0.03)
-                else:
-                    idxlf = int((wvline-wvmin)/0.03)
-
+            idxlf = int( ( np.log(wvline) - np.log(wvmin) ) / np.log( 1 + 1 / (R*step) ) )
             idxrg = idxlf + 1
 
             diffwv=wv[idxrg]-wv[idxlf] #pixel size in wavelength

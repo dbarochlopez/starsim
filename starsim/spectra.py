@@ -79,12 +79,12 @@ def interpolate_Phoenix_mu_lc(self,temp,grav):
 
     #check if the parameters are inside the grid of models
     if grav<np.min(list_grav) or grav>np.max(list_grav):
-        sys.exit('Error in the interpolation of Phoenix_mu models. The desired logg is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix intensity models covering the desired logg from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73')
+        sys.exit('Error in the interpolation of Phoenix_mu models. The desired logg ({}) is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix intensity models covering the desired logg from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73'.format(grav))
 
     if temp<np.min(list_temp) or temp>np.max(list_temp):
-        sys.exit('Error in the interpolation of Phoenix_mu models. The desired T is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix intensity models covering the desired T from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73')
+        sys.exit('Error in the interpolation of Phoenix_mu models. The desired T ({}) is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix intensity models covering the desired T from https://phoenix.astro.physik.uni-goettingen.de/?page_id=73'.format(temp))
         
 
 
@@ -342,7 +342,7 @@ def generate_rotating_photosphere_lc(self,Ngrid_in_ring,pare,amu,bph,bsp,bfc,flx
 ########################################################################################
 
 
-def interpolate_Phoenix(self,temp,grav):
+def interpolate_Phoenix(self,temp,grav,plot=False):
     """Cut and interpolate phoenix models at the desired wavelengths, temperatures, logg and metalicity(not yet). For spectroscopy.
     Inputs
     temp: temperature of the model; 
@@ -362,11 +362,11 @@ def interpolate_Phoenix(self,temp,grav):
 
     #check if the parameters are inside the grid of models
     if grav<np.min(list_grav) or grav>np.max(list_grav):
-        sys.exit('Error in the interpolation of Phoenix models. The desired logg is outside the grid of models, extrapolation is not supported. Please download the \
-        Phoenix models covering the desired logg from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
+        sys.exit('Error in the interpolation of Phoenix models. The desired logg ({}) is outside the grid of models, extrapolation is not supported. Please download the \
+        Phoenix models covering the desired logg from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/'.format(grav))
 
     if temp<np.min(list_temp) or temp>np.max(list_temp):
-        sys.exit('Error in the interpolation of Phoenix models. The desired T={} is outside the grid of models, extrapolation is not supported. Please download the \
+        sys.exit('Error in the interpolation of Phoenix models. The desired T ({}) is outside the grid of models, extrapolation is not supported. Please download the \
         Phoenix models covering the desired T from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/'.format(temp))
         
 
@@ -381,8 +381,8 @@ def interpolate_Phoenix(self,temp,grav):
         sys.exit('Error in reading the file WAVE_PHOENIX-ACES-AGSS-COND-2011.fits. Please download it from http://phoenix.astro.physik.uni-goettingen.de/data/HiResFITS/PHOENIX-ACES-AGSS-COND-2011/')
     with fits.open(path / 'WAVE_PHOENIX-ACES-AGSS-COND-2011.fits') as hdul:
         wavelength=hdul[0].data
-    #cut the wavelength at the ranges set by the user. Adding an overhead of 0.1 nm to allow for high Doppler shifts without losing info
-    overhead=1.0 #Angstrom
+    #cut the wavelength at the ranges set by the user. Adding an overhead of 0.2 nm to allow for high Doppler shifts without losing info
+    overhead=2.0 #Angstrom
     idx_wv=np.array(wavelength>self.wavelength_lower_limit-overhead) & np.array(wavelength<self.wavelength_upper_limit+overhead)
     #load the flux of the four phoenix model
     name_lowTlowg='lte{:05d}-{:.2f}-0.0.PHOENIX-ACES-AGSS-COND-2011-HiRes.fits'.format(int(lowT),lowg)
@@ -423,23 +423,54 @@ def interpolate_Phoenix(self,temp,grav):
     else:
         flux = flux_lowg + ( (grav - lowg) / (uppg - lowg) ) * (flux_uppg - flux_lowg)
 
+    wv= wavelength[idx_wv]
+
+
+    R = self.instrument_resolution
+    step = self.instrument_sampling_size
+    c = 2.99792458e5
+    FWHM = c/R #in km/s
+
+    wv_even = np.linspace(min(wv),max(wv),len(wv))
+    sp = interpolate.CubicSpline(wv, flux)
+    flux_even = sp(wv_even)
+    len_gaussian = 30
+    
+    flux_convolved = (len(flux_even) - len_gaussian) * [0]
+    for l in range(len(flux_convolved)):
+        wvs = wv_even[l:l+len_gaussian]
+        wv0 = wv_even[l+int(len_gaussian/2)]
+        rvs = c*(wvs - wv0)/wv0
+        G = nbspectra.gaussian(rvs,1,0,FWHM/(2*np.sqrt(2*np.log(2)))) #Gaussian in km/s
+        for i in range(len_gaussian):
+            flux_convolved[l] += flux_even[l-i+len_gaussian]*G[i]
+        flux_convolved[l] /= sum(G)
+
+    wv_final = wv_even[int(len_gaussian/2):len(wv_even)-int(len_gaussian/2)] #To center the wavelength
+
+    #sampling of the instrument
+    sp2 = interpolate.CubicSpline(wv_final, flux_convolved,extrapolate=True)
+    wv_instrument=np.exp(np.arange(np.log(wv_final[0]),np.log(wv_final[-1]),np.log(1 + 1/(R*step))))
+    flux_instrument = sp2(wv_instrument) 
 
     #Normalize by fitting a 6th degree polynomial to the maximum of the bins of the binned spectra
     #nbins depend on the Temperature and wavelength range. 20 bins seems to work for all reasonable parameters. With more bins it starts to pick absorption lines. Less bins degrades the fit. 
     bins=np.linspace(self.wavelength_lower_limit-overhead,self.wavelength_upper_limit+overhead,20)
-    wv= wavelength[idx_wv]
-    x_bin,y_bin=nbspectra.normalize_spectra_nb(bins,np.asarray(wv,dtype=np.float64),np.asarray(flux,dtype=np.float64))
+    x_bin,y_bin=nbspectra.normalize_spectra_nb(bins,np.asarray(wv_instrument,dtype=np.float64),np.asarray(flux_instrument,dtype=np.float64))
 
 
     # #divide by 6th deg polynomial
     coeff = np.polyfit(x_bin, y_bin, 6)
-    flux_norm = flux / np.poly1d(coeff)(wv)
+    flux_norm = flux_instrument / np.poly1d(coeff)(wv_instrument)
+    #plots to check normalization. For debugging purposes.
+    if plot:
+        plt.plot(wv,flux_instrument)
+        plt.plot(x_bin,y_bin,'ok')
+        plt.plot(wv,np.poly1d(coeff)(wv))
+        plt.show()
+        plt.close()
 
-    #Degrade resolution of the spectra to compensate for the resolution of the instrument
-    R = self.instrument_resolution
-    sampling = self.instrument_sampling_size
-    
-    interpolated_spectra = np.array([wv,flux_norm])
+    interpolated_spectra = np.array([wv_instrument,flux_norm])
 
     return interpolated_spectra
 
@@ -869,10 +900,8 @@ def compute_spot_position(self,t):
         longi = self.spot_map[i][3] #longitude
         Rcoef = self.spot_map[i][4::] #coefficients for the evolution od the radius. Depends on the desired law.
 
-        rotation_period_lat = 1/(1/self.rotation_period + (self.differential_rotation*np.sin(np.deg2rad(lat))**2)/360)
-
         #update longitude adding diff rotation
-        pht = longi + (t-self.reference_time)/rotation_period_lat%1*360 
+        pht = longi + (t-self.reference_time)/self.rotation_period%1*360 + (t-self.reference_time)*self.differential_rotation*(1.698*np.sin(np.deg2rad(lat))**2+2.346*np.sin(np.deg2rad(lat))**4)
         phsr = pht%360 #make the phase between 0 and 360. 
 
         if self.spots_evo_law == 'constant':
