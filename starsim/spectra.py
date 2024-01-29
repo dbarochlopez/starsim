@@ -442,7 +442,7 @@ def interpolate_Phoenix(self,temp,grav,plot=False):
         plt.show()
         plt.close()
 
-    interpolated_spectra = np.array([wv,flux_norm,flux])
+    interpolated_spectra = np.array([wv,flux_norm])
 
     return interpolated_spectra
 
@@ -522,7 +522,7 @@ def dumusque_coeffs(amu):
 
 
 def compute_immaculate_photosphere_rv(self,Ngrid_in_ring,acd,amu,pare,flpk,rv_ph,rv,ccf,rvel):
-    '''Asing the ccf to each grid element, Doppler shift, add LD, and add bisectors, in order to compute the ccf of the immaculate photosphere.
+    '''Asign the ccf to each grid element, Doppler shift, add LD, and add bisectors, in order to compute the ccf of the immaculate photosphere.
     input:
     acd: angles of the kurucz model
     flnp: flux of the HR norm. spectra.
@@ -751,7 +751,9 @@ def generate_rotating_photosphere_rv(self,Ngrid_in_ring,pare,amu,RV,ccf_ph_tot,c
 
 # @profile
 def compute_ccf_params(self,rv,ccf,plot_test):
-    '''Compute the parameters of the CCF and its bisector span (10-40% bottom minus 60-90% top)
+    '''
+    Compute the parameters of the CCF and its bisector span 
+    (10-40% bottom minus 60-90% top)
     '''
     rvs=np.zeros(len(ccf)) #initialize
     fwhm=np.zeros(len(ccf))
@@ -761,23 +763,18 @@ def compute_ccf_params(self,rv,ccf,plot_test):
     for i in range(len(ccf)): #loop for each ccf
         ccf[i] = ccf[i] - ccf[i].min() + 0.000001
         #Compute bisector and remove wings
-        cutleft,cutright,xbis,ybis=nbspectra.speed_bisector_nb(rv,ccf[i]/ccf[i].max(),integrated_bis=True) #FAST
+        cutleft0,cutright0,xbis,ybis=nbspectra.speed_bisector_nb(rv,ccf[i]/ccf[i].max(),integrated_bis=True) #FAST
         BIS[i]=np.mean(xbis[np.array(ybis>=0.1) & np.array(ybis<=0.4)])-np.mean(xbis[np.array(ybis<=0.9) & np.array(ybis>=0.6)]) #FAST
-        # fun_bis=bisector_fit(self,rv,(ccf[i]-ccf[i][0])/np.max(ccf[i]-ccf[i][0]),plot_test=False,kind_interp='linear',integrated_bis=True)#bisector of normalized ccf
-        # BIS[i]=np.mean(fun_bis(np.linspace(0.1,0.4,100)))-np.mean(fun_bis(np.linspace(0.6,0.9,100))) #bisector span
-
+        if i==0:
+            cutleft,cutright=cutleft0,cutright0
         try:
-            #OLD, NO SHIFT. popt,pcov=optimize.curve_fit(nbspectra.gaussian, rv, ccf[i],p0=[np.max(ccf[i]),rv[np.argmax(ccf[i])]+100,1.5*self.vsini+1000]) #fit a gaussian
-            popt,pcov=optimize.curve_fit(nbspectra.gaussian2, rv, ccf[i],p0=[np.max(ccf[i]),rv[np.argmax(ccf[i])]+100,1.5*self.vsini+1000,0.000001]) #fit a gaussian
-            # coeff = nbspectra.fit_poly(rv[cutleft:cutright],np.log(ccf[i][cutleft:cutright]),2,w=ccf[i][cutleft:cutright]) #FAST
-            # popt=[m.exp(coeff[2]-coeff[1]**2/(4*coeff[0])),-coeff[1]/(2*coeff[0]),m.sqrt(-1/(2*coeff[0]))] #FAST
-
+            popt,_=optimize.curve_fit(nbspectra.gaussian2, rv[cutleft:cutright], ccf[i][cutleft:cutright],p0=[np.max(ccf[i][cutleft:cutright]),rv[cutleft:cutright][np.argmax(ccf[i][cutleft:cutright])]+100,1.5*self.vsini+1000,0.000001]) #fit a gaussian
         except:
-            popt=[1.0,100000.0,100000.0]
+            popt=[1.0,100000.0,1,100000.0]
         contrast[i]=popt[0] #amplitude
         rvs[i]=popt[1] #mean
         fwhm[i]=2*m.sqrt(2*np.log(2))*np.abs(popt[2]) #fwhm relation to std
-        
+
         if plot_test: 
             # plt.plot(rv,1-ccf[i]/ccf[i].max())
             plt.plot(xbis,1-ybis,'b')

@@ -133,6 +133,11 @@ def cross_correlation_nb(rv,wv,flx,wv_ref,flx_ref):
 
 @nb.njit(cache=True,error_model='numpy')
 def cross_correlation_mask(rv,wv,f,wvm,fm):
+    """
+    Function to compute CCF against Phoenix-spectra. The steps used
+    are specific to Phoenix spectra, do not use other spectra.
+    
+    """
     ccf = np.zeros(len(rv))
     lenm = len(wvm)
     wvmin=wv[0]

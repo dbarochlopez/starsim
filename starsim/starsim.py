@@ -294,12 +294,15 @@ class StarSim(object):
 
 
         if 'rv' in observables or 'bis' in observables or 'fwhm' in observables or 'contrast' in observables: #use HR templates. Interpolate for temperatures and logg for different elements. Cut to desired wavelength.
-            rvel=self.vsini*np.sin(theta)*np.sin(phi)#*np.cos(self.inclination) #radial velocities of each grid
+            
+            rotation_period_lat = 1/(1/self.rotation_period + (self.differential_rotation*np.sin(np.pi/2 - theta)**2)/360) #Add diff rotation
+            vsini = 1000*2*np.pi*(self.radius*696342)*np.cos(self.inclination)/(rotation_period_lat*86400)
+            rvel=vsini*np.sin(theta)*np.sin(phi) #radial velocities of each grid. Inclination already in vsini
 
-            wv_rv, flnp_rv, flp_rv =spectra.interpolate_Phoenix(self,self.temperature_photosphere,self.logg) #returns norm spectra and no normalized, interpolated at T and logg
-            wv_rv, flns_rv, fls_rv =spectra.interpolate_Phoenix(self,self.temperature_spot,self.logg)
+            wv_rv, flnp_rv =spectra.interpolate_Phoenix(self,self.temperature_photosphere,self.logg) #returns norm spectra and no normalized, interpolated at T and logg
+            wv_rv, flns_rv =spectra.interpolate_Phoenix(self,self.temperature_spot,self.logg)
             if self.facular_area_ratio>0:
-                wv_rv, flnf_rv, flf_rv =spectra.interpolate_Phoenix(self,self.temperature_facula,self.logg)
+                wv_rv, flnf_rv =spectra.interpolate_Phoenix(self,self.temperature_facula,self.logg)
             spec_ref = flnp_rv #reference spectrum to compute CCF. Normalized
 
             #Interpolate also Phoenix intensity models to the Phoenix wavelength. 
@@ -323,9 +326,9 @@ class StarSim(object):
                     sys.exit('Selected wavelength must cover all the mask wavelength range, including 1A overhead covering RV shifts. Units in Angstroms.')
 
                 ccf_ph = nbspectra.cross_correlation_mask(rv,np.asarray(wv_rv,dtype='float64'),np.asarray(flnp_rv,dtype='float64'),np.asarray(self.wvm,dtype='float64'),np.asarray(self.fm,dtype='float64'))
-                ccf_sp = nbspectra.cross_correlation_mask(rv,np.asarray(wv_rv,dtype='float64'),np.asarray(flnp_rv,dtype='float64'),np.asarray(self.wvm,dtype='float64'),np.asarray(self.fm,dtype='float64'))
+                ccf_sp = nbspectra.cross_correlation_mask(rv,np.asarray(wv_rv,dtype='float64'),np.asarray(flns_rv,dtype='float64'),np.asarray(self.wvm,dtype='float64'),np.asarray(self.fm,dtype='float64'))
                 if self.facular_area_ratio>0:
-                    ccf_fc = nbspectra.cross_correlation_mask(rv,np.asarray(wv_rv,dtype='float64'),np.asarray(flnp_rv,dtype='float64'),np.asarray(self.wvm,dtype='float64'),np.asarray(self.fm,dtype='float64'))
+                    ccf_fc = nbspectra.cross_correlation_mask(rv,np.asarray(wv_rv,dtype='float64'),np.asarray(flnf_rv,dtype='float64'),np.asarray(self.wvm,dtype='float64'),np.asarray(self.fm,dtype='float64'))
                 else:
                     ccf_fc=ccf_ph*0.0
 
@@ -385,7 +388,9 @@ class StarSim(object):
 
 
         if 'crx' in observables: #use HR templates in different wavelengths to compute chromatic index. Interpolate for temperatures and logg for different elements. Cut to desired wavelength.
-            rvel=self.vsini*np.sin(theta)*np.sin(phi) #radial velocities of each grid
+            rotation_period_lat = 1/(1/self.rotation_period + (self.differential_rotation*np.sin(np.pi/2 - theta)**2)/360) #Add diff rotation
+            vsini = 1000*2*np.pi*(self.radius*696342)*np.cos(self.inclination)/(rotation_period_lat*86400)
+            rvel=vsini*np.sin(theta)*np.sin(phi) #radial velocities of each grid. Inclination already in vsini
 
             pathorders = self.path / 'orders_CRX' / self.orders_CRX_filename
             # print('Reading the file in',pathorders,'containing the wavelengthranges of each echelle order,to compute the CRX')
@@ -403,10 +408,10 @@ class StarSim(object):
 
                 self.wavelength_lower_limit, self.wavelength_upper_limit = wvmins[i], wvmaxs[i]
 
-                wv_rv, flnp_rv, flp_rv =spectra.interpolate_Phoenix(self,self.temperature_photosphere,self.logg) #returns norm spectra and no normalized, interpolated at T and logg
-                wv_rv, flns_rv, fls_rv =spectra.interpolate_Phoenix(self,self.temperature_spot,self.logg)
+                wv_rv, flnp_rv = spectra.interpolate_Phoenix(self,self.temperature_photosphere,self.logg) #returns norm spectra and no normalized, interpolated at T and logg
+                wv_rv, flns_rv = spectra.interpolate_Phoenix(self,self.temperature_spot,self.logg)
                 if self.facular_area_ratio>0:
-                    wv_rv, flnf_rv, flf_rv =spectra.interpolate_Phoenix(self,self.temperature_facula,self.logg)
+                    wv_rv, flnf_rv = spectra.interpolate_Phoenix(self,self.temperature_facula,self.logg)
                 spec_ref = flnp_rv #reference spectrum to compute CCF. Normalized
 
 
