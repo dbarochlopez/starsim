@@ -426,51 +426,41 @@ def interpolate_Phoenix(self,temp,grav,plot=False):
     wv= wavelength[idx_wv]
 
 
-    R = self.instrument_resolution
-    step = self.instrument_sampling_size
-    c = 2.99792458e5
-    FWHM = c/R #in km/s
+    if self.ccf_template == "mask":
+        R = self.instrument_resolution
+        step = self.instrument_sampling_size
+        c = 2.99792458e5
+        FWHM = c/R #in km/s
 
-    wv_even = np.linspace(min(wv),max(wv),len(wv))
-    sp = interpolate.CubicSpline(wv, flux)
-    flux_even = sp(wv_even)
-    len_gaussian = 30
-    
-    flux_convolved = (len(flux_even) - len_gaussian) * [0]
-    for l in range(len(flux_convolved)):
-        wvs = wv_even[l:l+len_gaussian]
-        wv0 = wv_even[l+int(len_gaussian/2)]
-        rvs = c*(wvs - wv0)/wv0
-        G = nbspectra.gaussian(rvs,1,0,FWHM/(2*np.sqrt(2*np.log(2)))) #Gaussian in km/s
-        for i in range(len_gaussian):
-            flux_convolved[l] += flux_even[l-i+len_gaussian]*G[i]
-        flux_convolved[l] /= sum(G)
+        wv_even = np.linspace(min(wv),max(wv),len(wv))
+        sp = interpolate.CubicSpline(wv, flux)
+        flux_even = sp(wv_even)
+        len_gaussian = 30
+        
+        flux_convolved = nbspectra.convolve_spectra(wv_even,flux_even,len_gaussian,FWHM)
 
-    wv_final = wv_even[int(len_gaussian/2):len(wv_even)-int(len_gaussian/2)] #To center the wavelength
+        wv_final = wv_even[int(len_gaussian/2):len(wv_even)-int(len_gaussian/2)] #To center the wavelength
 
-    #sampling of the instrument
-    sp2 = interpolate.CubicSpline(wv_final, flux_convolved,extrapolate=True)
-    wv_instrument=np.exp(np.arange(np.log(wv_final[0]),np.log(wv_final[-1]),np.log(1 + 1/(R*step))))
-    flux_instrument = sp2(wv_instrument) 
+        #sampling of the instrument
+        sp2 = interpolate.CubicSpline(wv_final, flux_convolved,extrapolate=True)
+        wv_instrument, flux_instrument = nbspectra.instrument_sampling(wv_final,R,step,sp2)
+        
+        #Normalize by fitting a 6th degree polynomial to the maximum of the bins of the binned spectra
+        #nbins depend on the Temperature and wavelength range. 20 bins seems to work for all reasonable parameters. With more bins it starts to pick absorption lines. Less bins degrades the fit. 
+        bins=np.linspace(self.wavelength_lower_limit-overhead,self.wavelength_upper_limit+overhead,20)
+        x_bin,y_bin=nbspectra.normalize_spectra_nb(bins,np.asarray(wv_instrument,dtype=np.float64),np.asarray(flux_instrument,dtype=np.float64))
+        # #divide by 6th deg polynomial
+        coeff = np.polyfit(x_bin, y_bin, 6)
+        flux_norm = flux_instrument / np.poly1d(coeff)(wv_instrument)
+        interpolated_spectra = np.array([wv_instrument,flux_norm])
 
-    #Normalize by fitting a 6th degree polynomial to the maximum of the bins of the binned spectra
-    #nbins depend on the Temperature and wavelength range. 20 bins seems to work for all reasonable parameters. With more bins it starts to pick absorption lines. Less bins degrades the fit. 
-    bins=np.linspace(self.wavelength_lower_limit-overhead,self.wavelength_upper_limit+overhead,20)
-    x_bin,y_bin=nbspectra.normalize_spectra_nb(bins,np.asarray(wv_instrument,dtype=np.float64),np.asarray(flux_instrument,dtype=np.float64))
-
-
-    # #divide by 6th deg polynomial
-    coeff = np.polyfit(x_bin, y_bin, 6)
-    flux_norm = flux_instrument / np.poly1d(coeff)(wv_instrument)
-    #plots to check normalization. For debugging purposes.
-    if plot:
-        plt.plot(wv,flux_instrument)
-        plt.plot(x_bin,y_bin,'ok')
-        plt.plot(wv,np.poly1d(coeff)(wv))
-        plt.show()
-        plt.close()
-
-    interpolated_spectra = np.array([wv_instrument,flux_norm])
+    else:
+        bins=np.linspace(self.wavelength_lower_limit-overhead,self.wavelength_upper_limit+overhead,20)
+        x_bin,y_bin=nbspectra.normalize_spectra_nb(bins,np.asarray(wv,dtype=np.float64),np.asarray(flux,dtype=np.float64))
+        # #divide by 6th deg polynomial
+        coeff = np.polyfit(x_bin, y_bin, 6)
+        flux_norm = flux / np.poly1d(coeff)(wv)
+        interpolated_spectra = np.array([wv,flux_norm])
 
     return interpolated_spectra
 
@@ -550,7 +540,7 @@ def dumusque_coeffs(amu):
 
 
 def compute_immaculate_photosphere_rv(self,Ngrid_in_ring,acd,amu,pare,flpk,rv_ph,rv,ccf,rvel):
-    '''Asing the ccf to each grid element, Doppler shift, add LD, and add bisectors, in order to compute the ccf of the immaculate photosphere.
+    '''Asign the ccf to each grid element, Doppler shift, add LD, and add bisectors, in order to compute the ccf of the immaculate photosphere.
     input:
     acd: angles of the kurucz model
     flnp: flux of the HR norm. spectra.

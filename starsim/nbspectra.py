@@ -117,6 +117,27 @@ def interpolation_nb(xp,x,y,left=0,right=0):
 
     return yp
 
+@nb.njit(cache=True,error_model='numpy')
+def convolve_spectra(wv_even,flux_even,len_gaussian,FWHM):
+    flux_convolved = (len(flux_even) - len_gaussian) * [0]
+    for l in range(len(flux_convolved)):
+        wvs = wv_even[l:l+len_gaussian]
+        wv0 = wv_even[l+int(len_gaussian/2)]
+        rvs = 2.99792458e5*(wvs - wv0)/wv0
+        G = gaussian(rvs,1,0,FWHM/(2*np.sqrt(2*np.log(2)))) #Gaussian in km/s
+        for i in range(len_gaussian):
+            flux_convolved[l] += flux_even[l-i+len_gaussian]*G[i]
+        flux_convolved[l] /= sum(G)
+    return flux_convolved
+
+def instrument_sampling(wv_final,R,step,sp2):
+    wv_instrument=np.exp(np.arange(np.log(wv_final[0]),np.log(wv_final[-1]),np.log(1 + 1/(R*step))))
+    flux_instrument = [0] * len(wv_instrument)
+    for i, l in enumerate(wv_instrument):
+        width = l/(R*step)
+        flux_instrument[i] = np.nanmean(sp2(np.linspace(l - width/2, l + width/2, 5)))
+    return wv_instrument, flux_instrument
+
 
 @nb.njit(cache=True,error_model='numpy')
 def cross_correlation_nb(rv,wv,flx,wv_ref,flx_ref):

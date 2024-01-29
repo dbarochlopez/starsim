@@ -1463,6 +1463,7 @@ class StarSim(object):
             l=0
             for i in range(len(self.instruments)):
                 for j in self.observables[i]:
+                    print('Plot {}-{}'.format(k,j))
                     self.wavelength_lower_limit=self.data[self.instruments[i]]['wvmin']
                     self.wavelength_upper_limit=self.data[self.instruments[i]]['wvmax']
                     self.filter_name=self.data[self.instruments[i]]['filter']
