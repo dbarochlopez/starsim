@@ -336,11 +336,11 @@ class StarSim(object):
             fun_bis_ph = spectra.bisector_fit(self,rv,ccf_ph,plot_test=False,kind_interp=self.kind_interp)
             rv_ph = rv - fun_bis_ph(ccf_ph) #subtract the bisector from the CCF.
             fun_bis_sp = spectra.bisector_fit(self,rv,ccf_sp,plot_test=False,kind_interp=self.kind_interp)
-            rv_sp = rv - fun_bis_ph(ccf_sp)
+            rv_sp = rv - fun_bis_sp(ccf_sp)
             rv_fc = rv_ph
             if self.facular_area_ratio>0:            
                 fun_bis_fc = spectra.bisector_fit(self,rv,ccf_fc,plot_test=False,kind_interp=self.kind_interp)        
-                rv_fc = rv - fun_bis_ph(ccf_fc)
+                rv_fc = rv - fun_bis_fc(ccf_fc)
 
             
             if self.simulation_mode == 'grid':
@@ -433,12 +433,12 @@ class StarSim(object):
                 fun_bis_ph = spectra.bisector_fit(self,rv,ccf_ph,plot_test=False,kind_interp=self.kind_interp)
                 rv_ph = rv - fun_bis_ph(ccf_ph) #subtract the bisector from the CCF.
                 fun_bis_sp = spectra.bisector_fit(self,rv,ccf_sp,plot_test=False,kind_interp=self.kind_interp)
-                rv_sp = rv - fun_bis_ph(ccf_sp)
+                rv_sp = rv - fun_bis_sp(ccf_sp)
                 rv_fc = rv_ph
 
                 if self.facular_area_ratio>0:            
                     fun_bis_fc = spectra.bisector_fit(self,rv,ccf_fc,plot_test=False,kind_interp=self.kind_interp)        
-                    rv_fc = rv - fun_bis_ph(ccf_fc)
+                    rv_fc = rv - fun_bis_fc(ccf_fc)
 
 
                 if self.simulation_mode == 'grid':
