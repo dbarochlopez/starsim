@@ -1,5 +1,7 @@
 # starsim
 
+![](https://github.com/dbarochlopez/starsim/blob/main/starsim.gif)
+
 Starsim can be downloaded from github, and installed using pip. Simply run:
 
 ```
