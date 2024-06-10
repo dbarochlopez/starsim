@@ -202,7 +202,7 @@ class StarSim(object):
 
     @property
     def planet_semi_major_axis(self):
-        return 4.2097*self.planet_period**(2/3)*self.mass**(1/3) #semi major axis in stellar radius units 
+        return 4.2097*self.planet_period**(2/3)*self.mass**(1/3)/self.radius #semi major axis in stellar radius units 
 
 
     def __conf_init(self):
