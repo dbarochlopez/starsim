@@ -884,7 +884,7 @@ def compute_spot_position(self,t):
                 rad=Rcoef[0]+(t-tini)*(Rcoef[1]-Rcoef[0])/dur
             else:
                 rad=0.0
-        elif Revo == 'quadratic':
+        elif self.spots_evo_law == 'quadratic':
             if t>=tini and t<=tfin:
                 rad=-4*Rcoef[0]*(t-tini)*(t-tini-dur)/dur**2
             else:
