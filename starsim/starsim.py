@@ -112,7 +112,7 @@ class StarSim(object):
 
             self.nwalkers = int(self.conf_file.get('optimization','N_walkers'))
             self.steps = int(self.conf_file.get('optimization','N_steps'))
-            self.planet_impact_paramurns = int(self.conf_file.get('optimization','N_burns'))
+            self.burns = int(self.conf_file.get('optimization','N_burns'))
             self.N_cpus = int(self.conf_file.get('optimization','N_cpus'))
             self.N_iters_SA = int(self.conf_file.get('optimization','N_iters_SA'))
 
@@ -134,7 +134,7 @@ class StarSim(object):
             self.rvo = None #initialize
             self.conto = None #initialize
             self.fwhmo = None #initialize
-            self.planet_impact_paramiso = None #initialize
+            self.biso = None #initialize
 
             #read and check spotmap
             pathspots = self.path / 'spotmap.dat' #path relatve to working directory 
@@ -498,7 +498,7 @@ class StarSim(object):
             self.rvo=rvso
             self.conto=conto
             self.fwhm=fwhmo
-            self.planet_impact_paramiso=biso
+            self.biso=biso
             self.results['ccx']=ccx
             self.results['cfx']=cfx
             self.results['cbx']=cbx
@@ -743,8 +743,8 @@ class StarSim(object):
         print('MCMC uncertainties estimation')
         print('Total parameters to optimize:',ndim)
 
-        preburns=self.planet_impact_paramurns
-        burns=self.planet_impact_paramurns
+        preburns=self.burns
+        burns=self.burns
         steps=self.steps
         nwalkers=self.nwalkers
 
@@ -792,11 +792,11 @@ class StarSim(object):
         samples_burned=postot[preburns+burns::,:,:].reshape((-1,ndim))
         logs_burned=lptot[preburns+burns::,:].reshape((-2))
 
-        self.planet_impact_paramestparams=samples_burned[np.argmax(logs_burned),:]
-        self.planet_impact_paramestmean=[np.median(samples_burned[:,i]) for i in range(len(samples_burned[0]))]
-        self.planet_impact_parameststd=[np.std(samples_burned[:,i]) for i in range(len(samples_burned[0]))]
-        self.planet_impact_paramestup=[np.quantile(samples_burned[:,i],0.84135)-np.median(samples_burned[:,i]) for i in range(len(samples_burned[0]))]
-        self.planet_impact_paramestbot=[np.median(samples_burned[:,i])-np.quantile(samples_burned[:,i],0.15865) for i in range(len(samples_burned[0]))] 
+        self.bestparams=samples_burned[np.argmax(logs_burned),:]
+        self.bestmean=[np.median(samples_burned[:,i]) for i in range(len(samples_burned[0]))]
+        self.beststd=[np.std(samples_burned[:,i]) for i in range(len(samples_burned[0]))]
+        self.bestup=[np.quantile(samples_burned[:,i],0.84135)-np.median(samples_burned[:,i]) for i in range(len(samples_burned[0]))]
+        self.bestbot=[np.median(samples_burned[:,i])-np.quantile(samples_burned[:,i],0.15865) for i in range(len(samples_burned[0]))] 
 
         param_inv=[]
         # print(P)
