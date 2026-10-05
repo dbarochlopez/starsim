@@ -281,7 +281,7 @@ def speed_bisector_nb(rv,ccf,integrated_bis):
 
     for i in range(len(ynew)):
         if xnew[-1-i]<maxrv:
-            if ynew[-1-i]>ynew[-i] and ynew[i]<0.8*maxccf:
+            if ynew[-1-i]>ynew[-i] and ynew[-i-1]<0.8*maxccf:
                 cutleft=len(ynew)-i
                 break
 
